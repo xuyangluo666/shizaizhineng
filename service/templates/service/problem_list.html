@@ -1,0 +1,167 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ customer.name }} - {% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</h1>
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <a href="{% url 'service:problem_create' customer.id %}" class="btn btn-success w-100">新增{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</a>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'service:problem_import' customer.id %}" class="btn btn-info w-100">导入</a>
+        </div>
+        <div class="col-md-3">
+            <a href="{% url 'service:problem_export' %}?customer_id={{ customer.id }}" class="btn btn-info w-100">导出{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</a>
+        </div>
+        <div class="col-md-3">
+            <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger w-100" onclick="return confirm('确定要批量删除吗？')">批量删除{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</button>
+            </form>
+        </div>
+    </div>
+    <form method="get" class="form-inline mb-3">
+        <select name="status" class="form-control mr-2" style="height: 60px;">
+            <option value="">全部状态</option>
+            <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>待处理</option>
+            <option value="processing" {% if request.GET.status == 'processing' %}selected{% endif %}>处理中</option>
+            <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>已完成</option>
+        </select>
+        <input type="text" name="submitter" placeholder="提交人" class="form-control mr-2" value="{{ request.GET.submitter }}">
+        <input type="date" name="start_date" class="form-control mr-2" value="{{ request.GET.start_date }}">
+        <input type="date" name="end_date" class="form-control mr-2" value="{{ request.GET.end_date }}">
+        {% if customer.customer_type == 'operations' %}
+        <select name="related_process" class="form-control mr-2" style="height: 60px;">
+            <option value="">全部流程</option>
+            {% for process in processes %}
+            <option value="{{ process.id }}" {% if request.GET.related_process == process.id|stringformat:'s' %}selected{% endif %}>{{ process.name }}</option>
+            {% endfor %}
+        </select>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">筛选</button>
+    </form>
+    <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
+        {% csrf_token %}
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th><input type="checkbox" id="select-all"></th>
+                    <th>{% if customer.customer_type == 'operations' %}运维标题{% else %}问题标题{% endif %}</th>
+                    <th>问题描述</th>
+                    <th>问题截图</th>
+                    <th>出现时间</th>
+                    <th>提交人</th>
+                    <th>状态</th>
+                    <th>问题原因</th>
+                    <th>原因分类</th>
+                    <th>解决方案</th>
+                    <th>是否解决</th>
+                    <th>解决时间</th>
+                    <th>处理人</th>
+                    <th>处理时间</th>
+                    {% if customer.customer_type == 'operations' %}
+                    <th>关联流程</th>
+                    <th>人天</th>
+                    {% endif %}
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for problem in problems %}
+                <tr>
+                    <td><input type="checkbox" name="problem_ids" value="{{ problem.id }}"></td>
+                    <td>{{ problem.title }}</td>
+                    <td>
+                        <div class="text-truncate position-relative" style="max-width: 150px; height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
+                            {{ problem.description|default:"无" }}
+                            <div class="tooltip-text" style="visibility: hidden; width: 300px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 0; opacity: 0; transition: opacity 0.1s, visibility 0.1s; font-size: 14px; line-height: 1.4;">
+                                {{ problem.description|default:"无" }}
+                                <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        {% if problem.screenshot %}
+                            <a href="{{ problem.screenshot.url }}" target="_blank" class="text-info" title="点击查看截图">
+                                <i class="fas fa-image"></i> 查看
+                            </a>
+                        {% else %}
+                            <span class="text-muted">无</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ problem.occurrence_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
+                    <td>{{ problem.submitter }}</td>
+                    <td>{{ problem.get_status_display }}</td>
+                    <td>
+                        <div class="text-truncate position-relative" style="max-width: 150px; height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
+                            {{ problem.problem_reason|default:"无" }}
+                            <div class="tooltip-text" style="visibility: hidden; width: 300px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 0; opacity: 0; transition: opacity 0.1s, visibility 0.1s; font-size: 14px; line-height: 1.4;">
+                                {{ problem.problem_reason|default:"无" }}
+                                <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ problem.get_reason_type_display|default:"无" }}</td>
+                    <td>
+                        <div class="text-truncate position-relative" style="max-width: 150px; height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
+                            {{ problem.solution|default:"无" }}
+                            <div class="tooltip-text" style="visibility: hidden; width: 300px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 0; opacity: 0; transition: opacity 0.1s, visibility 0.1s; font-size: 14px; line-height: 1.4;">
+                                {{ problem.solution|default:"无" }}
+                                <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>{{ problem.get_is_solved_display|default:"无" }}</td>
+                    <td>{{ problem.solve_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
+                    <td>{{ problem.handler.username|default:"无" }}</td>
+                    <td>{{ problem.handle_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
+                    {% if customer.customer_type == 'operations' %}
+                    <td>{{ problem.related_process.name|default:"无" }}</td>
+                    <td>{{ problem.man_days|default:"无" }}</td>
+                    {% endif %}
+                    <td>
+                        <a href="{% url 'service:problem_update' problem.id %}" class="btn btn-sm btn-warning">编辑</a>
+                        <a href="{% url 'service:problem_delete' problem.id %}" class="btn btn-sm btn-danger">删除</a>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </form>
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">第一页</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">上一页</a>
+            {% endif %}
+            
+            <span class="current">
+                第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">最后一页</a>
+            {% endif %}
+        </span>
+    </div>
+    <a href="{% url 'service:customer_detail' customer.id %}" class="btn btn-secondary mt-3">返回客户详情</a>
+</div>
+
+<style>
+    .position-relative:hover .tooltip-text {
+        visibility: visible;
+        opacity: 1;
+    }
+</style>
+
+<script>
+    // 全选/取消全选
+    document.getElementById('select-all').addEventListener('change', function() {
+        var checkboxes = document.querySelectorAll('input[name="problem_ids"]');
+        checkboxes.forEach(function(checkbox) {
+            checkbox.checked = this.checked;
+        }.bind(this));
+    });
+</script>
+{% endblock %}

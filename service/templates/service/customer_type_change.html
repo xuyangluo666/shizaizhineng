@@ -1,0 +1,38 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ customer.name }} - 变更客户类型</h1>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="current_type">当前客户类型</label>
+            <input type="text" class="form-control" id="current_type" value="{{ customer.get_customer_type_display }}" disabled>
+        </div>
+        <div class="form-group">
+            <label for="new_type">目标客户类型</label>
+            <select class="form-control" id="new_type" name="new_type" required style="height: 60px;">
+                {% for type in valid_target_types %}
+                <option value="{{ type }}">
+                    {% if type == 'self_develop' %}自开发客户{% elif type == 'operations' %}售后运维客户{% endif %}
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="change_reason">变更原因</label>
+            <textarea class="form-control" id="change_reason" name="change_reason" rows="3" required></textarea>
+        </div>
+        {% if valid_target_types and 'operations' in valid_target_types %}
+        <div class="form-group">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="init_project" name="init_project">
+                <label class="form-check-label" for="init_project">初始化运维项目</label>
+            </div>
+        </div>
+        {% endif %}
+        <button type="submit" class="btn btn-primary">确认变更</button>
+        <a href="{% url 'service:customer_detail' customer.id %}" class="btn btn-secondary">取消</a>
+    </form>
+</div>
+{% endblock %}

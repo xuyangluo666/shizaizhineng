@@ -1,0 +1,42 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ project.name }} - 文件管理</h1>
+    <div class="row mb-3">
+        <div class="col-md-6">
+            <a href="{% url 'service:file_create' project.id %}" class="btn btn-success">上传文件</a>
+        </div>
+        <div class="col-md-6 text-right">
+            <a href="{% url 'service:project_list' project.customer.id %}" class="btn btn-secondary">返回项目列表</a>
+        </div>
+    </div>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>文件名称</th>
+                <th>类型</th>
+                <th>版本</th>
+                <th>上传人</th>
+                <th>上传时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for file in files %}
+            <tr>
+                <td>{{ file.name }}</td>
+                <td>{{ file.file_type }}</td>
+                <td>{{ file.version }}</td>
+                <td>{{ file.uploader.username }}</td>
+                <td>{{ file.upload_time|date:"Y-m-d H:i:s" }}</td>
+                <td>
+                    <a href="#" class="btn btn-sm btn-info">下载</a>
+                    <a href="{% url 'service:file_delete' file.id %}" class="btn btn-sm btn-danger">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}

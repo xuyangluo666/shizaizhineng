@@ -1,0 +1,1327 @@
+from django.shortcuts import render, redirect, get_object_or_404
+from django.views import View
+from django.views.generic import ListView, DetailView, CreateView, UpdateView, DeleteView, FormView
+from django.urls import reverse_lazy, reverse
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
+from django.http import HttpResponse, JsonResponse
+from django.core.paginator import Paginator
+from django.db.models import Count, Q
+from django.utils import timezone
+from django.contrib.auth.forms import UserCreationForm, AuthenticationForm, PasswordResetForm, SetPasswordForm
+from django.contrib.auth import login, authenticate, logout
+from django.contrib import messages
+from django.utils.http import urlsafe_base64_decode
+from django.utils.encoding import force_str
+from django.contrib.auth.tokens import default_token_generator
+from django.conf import settings
+import pandas as pd
+import io
+import os
+from .models import (
+    CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
+    Project, File, Process, OperationLog,
+    CUSTOMER_TYPE_TRIAL, CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS,
+    CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_TRIALING, CUSTOMER_STATUS_OPERATING
+)
+
+# 客户管理视图
+class CustomerListView(LoginRequiredMixin, ListView):
+    model = Customer
+    template_name = 'service/customer_list.html'
+    context_object_name = 'customers'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        # 搜索功能
+        search_term = self.request.GET.get('search', '')
+        if search_term:
+            queryset = queryset.filter(name__icontains=search_term)
+        # 客户类型筛选
+        customer_type = self.request.GET.get('type', '')
+        if customer_type:
+            queryset = queryset.filter(customer_type=customer_type)
+        return queryset
+
+class CustomerDetailView(LoginRequiredMixin, DetailView):
+    model = Customer
+    template_name = 'service/customer_detail.html'
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        customer = self.object
+        # 根据客户类型加载不同的模块
+        if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
+            # 运维客户显示项目、文件、流程、运维记录
+            context['projects'] = Project.objects.filter(customer=customer)
+            context['problems'] = Problem.objects.filter(customer=customer)
+        elif customer.customer_type == CUSTOMER_TYPE_SELF_DEVELOP:
+            # 自开发客户显示问题记录和主要人员
+            context['problems'] = Problem.objects.filter(customer=customer)
+        elif customer.customer_type == CUSTOMER_TYPE_TRIAL:
+            # 试用客户显示试用问题记录和主要人员
+            context['problems'] = Problem.objects.filter(customer=customer)
+            try:
+                context['trial_info'] = TrialCustomer.objects.get(customer=customer)
+            except TrialCustomer.DoesNotExist:
+                context['trial_info'] = None
+        return context
+
+class CustomerCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
+    model = Customer
+    template_name = 'service/customer_form.html'
+    fields = ['name', 'customer_type', 'status', 'contact_person']
+    success_url = reverse_lazy('service:customer_list')
+    permission_required = 'service.add_customer'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='创建客户',
+                object_type='Customer',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建客户: {self.object.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='创建客户',
+                object_type='Customer',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建客户: {self.object.name}'
+            )
+        # 如果是试用客户，创建试用信息
+        if form.cleaned_data['customer_type'] == CUSTOMER_TYPE_TRIAL:
+            TrialCustomer.objects.create(
+                customer=self.object,
+                trial_start_time=timezone.now(),
+                trial_end_time=timezone.now() + timezone.timedelta(days=30),
+                conversion_status=False
+            )
+        return response
+
+class CustomerUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
+    model = Customer
+    template_name = 'service/customer_form.html'
+    fields = ['name', 'status', 'contact_person']
+    success_url = reverse_lazy('service:customer_list')
+    permission_required = 'service.change_customer'
+    
+    def handle_no_permission(self):
+        from django.http import HttpResponseForbidden
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        customer = self.object
+        if customer.customer_type == CUSTOMER_TYPE_TRIAL:
+            try:
+                context['trial_info'] = TrialCustomer.objects.get(customer=customer)
+            except TrialCustomer.DoesNotExist:
+                context['trial_info'] = None
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='更新客户',
+                object_type='Customer',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新客户: {self.object.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='更新客户',
+                object_type='Customer',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新客户: {self.object.name}'
+            )
+        # 处理试用客户信息
+        if self.object.customer_type == CUSTOMER_TYPE_TRIAL:
+            trial_start_time = self.request.POST.get('trial_start_time')
+            trial_end_time = self.request.POST.get('trial_end_time')
+            conversion_status = self.request.POST.get('conversion_status') == 'on'
+            
+            try:
+                trial_customer = TrialCustomer.objects.get(customer=self.object)
+                if trial_start_time:
+                    trial_customer.trial_start_time = trial_start_time
+                if trial_end_time:
+                    trial_customer.trial_end_time = trial_end_time
+                trial_customer.conversion_status = conversion_status
+                trial_customer.save()
+            except TrialCustomer.DoesNotExist:
+                # 如果不存在，创建新的试用信息
+                if trial_start_time and trial_end_time:
+                    TrialCustomer.objects.create(
+                        customer=self.object,
+                        trial_start_time=trial_start_time,
+                        trial_end_time=trial_end_time,
+                        conversion_status=conversion_status
+                    )
+        return response
+
+class CustomerDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    model = Customer
+    template_name = 'service/customer_confirm_delete.html'
+    success_url = reverse_lazy('service:customer_list')
+    permission_required = 'service.delete_customer'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def delete(self, request, *args, **kwargs):
+        customer = self.get_object()
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='删除客户',
+                object_type='Customer',
+                object_id=customer.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除客户: {customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='删除客户',
+                object_type='Customer',
+                object_id=customer.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除客户: {customer.name}'
+            )
+        return super().delete(request, *args, **kwargs)
+
+class CustomerTypeChangeView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    template_name = 'service/customer_type_change.html'
+    permission_required = 'service.change_customer'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get(self, request, pk):
+        customer = get_object_or_404(Customer, pk=pk)
+        # 确定合法的目标类型
+        valid_target_types = []
+        if customer.customer_type == CUSTOMER_TYPE_TRIAL:
+            valid_target_types = [CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS]
+        elif customer.customer_type == CUSTOMER_TYPE_SELF_DEVELOP:
+            valid_target_types = [CUSTOMER_TYPE_OPERATIONS]
+        # 售后运维客户不可变更类型
+        elif customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
+            valid_target_types = []
+        
+        context = {
+            'customer': customer,
+            'valid_target_types': valid_target_types
+        }
+        return render(request, self.template_name, context)
+    
+    def post(self, request, pk):
+        customer = get_object_or_404(Customer, pk=pk)
+        old_type = customer.customer_type
+        new_type = request.POST.get('new_type')
+        change_reason = request.POST.get('change_reason')
+        init_project = request.POST.get('init_project') == 'on'
+        
+        # 验证类型变更的合法性
+        valid = False
+        if old_type == CUSTOMER_TYPE_TRIAL:
+            if new_type in [CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS]:
+                valid = True
+        elif old_type == CUSTOMER_TYPE_SELF_DEVELOP:
+            if new_type == CUSTOMER_TYPE_OPERATIONS:
+                valid = True
+        
+        if not valid:
+            return redirect('service:customer_detail', pk=pk)
+        
+        # 记录类型变更日志
+        try:
+            CustomerTypeChangeLog.objects.create(
+                customer=customer,
+                old_type=old_type,
+                new_type=new_type,
+                operator=request.user,
+                change_reason=change_reason
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置operator字段
+            CustomerTypeChangeLog.objects.create(
+                customer=customer,
+                old_type=old_type,
+                new_type=new_type,
+                operator=None,
+                change_reason=change_reason
+            )
+        
+        # 更新客户类型
+        customer.customer_type = new_type
+        # 更新客户状态
+        if new_type == CUSTOMER_TYPE_OPERATIONS:
+            customer.status = CUSTOMER_STATUS_OPERATING
+        elif new_type == CUSTOMER_TYPE_SELF_DEVELOP:
+            customer.status = CUSTOMER_STATUS_NORMAL
+        customer.save()
+        
+        # 如果变更为运维客户且需要初始化项目
+        if new_type == CUSTOMER_TYPE_OPERATIONS and init_project:
+            Project.objects.create(
+                customer=customer,
+                name=f'{customer.name} 默认项目',
+                contract_start_date=timezone.now().date(),
+                contract_end_date=timezone.now().date() + timezone.timedelta(days=365),
+                project_manager=request.user,
+                status='active'
+            )
+        
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='变更客户类型',
+                object_type='Customer',
+                object_id=customer.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'客户类型变更: {customer.name} 从 {old_type} 变更为 {new_type}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='变更客户类型',
+                object_type='Customer',
+                object_id=customer.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'客户类型变更: {customer.name} 从 {old_type} 变更为 {new_type}'
+            )
+        
+        return redirect('service:customer_detail', pk=pk)
+
+# 问题记录管理视图
+class ProblemListView(LoginRequiredMixin, ListView):
+    model = Problem
+    template_name = 'service/problem_list.html'
+    context_object_name = 'problems'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        customer_id = self.kwargs.get('customer_id')
+        queryset = Problem.objects.filter(customer_id=customer_id)
+        
+        # 筛选功能
+        status = self.request.GET.get('status', '')
+        submitter = self.request.GET.get('submitter', '')
+        start_date = self.request.GET.get('start_date', '')
+        end_date = self.request.GET.get('end_date', '')
+        related_process = self.request.GET.get('related_process', '')
+        
+        if status:
+            queryset = queryset.filter(status=status)
+        if submitter:
+            queryset = queryset.filter(submitter__icontains=submitter)
+        if start_date:
+            queryset = queryset.filter(submit_time__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(submit_time__lte=end_date)
+        if related_process:
+            queryset = queryset.filter(related_process_id=related_process)
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['customer_id'] = self.kwargs.get('customer_id')
+        # 获取客户信息
+        context['customer'] = get_object_or_404(Customer, id=self.kwargs.get('customer_id'))
+        # 获取可选的流程（仅运维客户）
+        customer = context['customer']
+        if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
+            projects = Project.objects.filter(customer=customer)
+            context['processes'] = Process.objects.filter(project__in=projects)
+        return context
+
+class ProblemCreateView(LoginRequiredMixin, CreateView):
+    model = Problem
+    template_name = 'service/problem_form.html'
+    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'submitter', 'status', 'problem_reason', 'reason_type', 'solution', 'is_solved', 'solve_time', 'handler', 'handle_time', 'man_days', 'related_process']
+    
+    def get_success_url(self):
+        return reverse('service:problem_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
+    
+    def get_initial(self):
+        initial = super().get_initial()
+        customer_id = self.kwargs.get('customer_id')
+        customer = get_object_or_404(Customer, id=customer_id)
+        initial['source_customer_type'] = customer.customer_type
+        return initial
+    
+    def form_valid(self, form):
+        customer_id = self.kwargs.get('customer_id')
+        form.instance.customer = get_object_or_404(Customer, id=customer_id)
+        # 设置来源客户类型
+        form.instance.source_customer_type = form.instance.customer.customer_type
+        # 如果状态为已完成，设置处理时间
+        if form.cleaned_data['status'] == 'completed':
+            form.instance.handle_time = timezone.now()
+        # 如果问题已解决，设置解决时间
+        if form.cleaned_data.get('is_solved') == 'yes' and not form.instance.solve_time:
+            form.instance.solve_time = timezone.now()
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='创建问题记录',
+                object_type='Problem',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建问题: {self.object.title} 客户: {self.object.customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='创建问题记录',
+                object_type='Problem',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建问题: {self.object.title} 客户: {self.object.customer.name}'
+            )
+        return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['customer_id'] = self.kwargs.get('customer_id')
+        # 获取可选的流程（仅运维客户）
+        customer = get_object_or_404(Customer, id=self.kwargs.get('customer_id'))
+        context['customer'] = customer
+        if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
+            projects = Project.objects.filter(customer=customer)
+            context['processes'] = Process.objects.filter(project__in=projects)
+        return context
+
+class ProblemUpdateView(LoginRequiredMixin, UpdateView):
+    model = Problem
+    template_name = 'service/problem_form.html'
+    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'submitter', 'status', 'problem_reason', 'reason_type', 'solution', 'is_solved', 'solve_time', 'handler', 'handle_time', 'man_days', 'related_process']
+    
+    def get_success_url(self):
+        return reverse('service:problem_list', kwargs={'customer_id': self.object.customer.id})
+    
+    def form_valid(self, form):
+        # 如果状态为已完成，设置处理时间
+        if form.cleaned_data['status'] == 'completed' and not form.instance.handle_time:
+            form.instance.handle_time = timezone.now()
+        # 如果问题已解决，设置解决时间
+        if form.cleaned_data.get('is_solved') == 'yes' and not form.instance.solve_time:
+            form.instance.solve_time = timezone.now()
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='更新问题记录',
+                object_type='Problem',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新问题: {self.object.title} 客户: {self.object.customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='更新问题记录',
+                object_type='Problem',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新问题: {self.object.title} 客户: {self.object.customer.name}'
+            )
+        return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # 获取可选的流程（仅运维客户）
+        if self.object.customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
+            projects = Project.objects.filter(customer=self.object.customer)
+            context['processes'] = Process.objects.filter(project__in=projects)
+        # 添加customer_id和customer到上下文
+        context['customer_id'] = self.object.customer.id
+        context['customer'] = self.object.customer
+        return context
+
+class ProblemDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
+    model = Problem
+    template_name = 'service/problem_confirm_delete.html'
+    permission_required = 'service.delete_problem'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get_success_url(self):
+        return reverse('service:problem_list', kwargs={'customer_id': self.object.customer.id})
+    
+    def delete(self, request, *args, **kwargs):
+        problem = self.get_object()
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='删除问题记录',
+                object_type='Problem',
+                object_id=problem.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除问题: {problem.title} 客户: {problem.customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='删除问题记录',
+                object_type='Problem',
+                object_id=problem.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除问题: {problem.title} 客户: {problem.customer.name}'
+            )
+        return super().delete(request, *args, **kwargs)
+
+class ProblemBatchDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = 'service.delete_problem'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def post(self, request):
+        problem_ids = request.POST.getlist('problem_ids')
+        if problem_ids:
+            problems = Problem.objects.filter(id__in=problem_ids)
+            # 记录操作日志
+            for problem in problems:
+                try:
+                    OperationLog.objects.create(
+                        user=request.user,
+                        action='批量删除问题记录',
+                        object_type='Problem',
+                        object_id=problem.id,
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        details=f'批量删除问题: {problem.title} 客户: {problem.customer.name}'
+                    )
+                except Exception as e:
+                    # 如果外键约束失败，尝试不设置user字段
+                    OperationLog.objects.create(
+                        user=None,
+                        action='批量删除问题记录',
+                        object_type='Problem',
+                        object_id=problem.id,
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        details=f'批量删除问题: {problem.title} 客户: {problem.customer.name}'
+                    )
+            problems.delete()
+            return JsonResponse({'success': True, 'message': '批量删除成功'})
+        return JsonResponse({'success': False, 'message': '请选择要删除的问题'})
+
+class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    template_name = 'service/problem_import.html'
+    permission_required = 'service.add_problem'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get(self, request, customer_id):
+        return render(request, self.template_name, {'customer_id': customer_id})
+    
+    def post(self, request, customer_id):
+        if 'file' not in request.FILES:
+            return JsonResponse({'success': False, 'message': '请选择文件'})
+        
+        file = request.FILES['file']
+        try:
+            # 读取Excel文件
+            df = pd.read_excel(file)
+            # 处理数据
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            for index, row in df.iterrows():
+                try:
+                    customer_name = row.get('客户名称')
+                    title = row.get('问题标题')
+                    description = row.get('问题描述')
+                    submitter = row.get('提交人')
+                    status = row.get('状态')
+                    solution = row.get('解决方案')
+                    handler_name = row.get('处理人')
+                    
+                    # 验证必填字段
+                    if not customer_name or not title or not description or not submitter:
+                        error_count += 1
+                        errors.append(f'第{index+2}行: 缺少必填字段')
+                        continue
+                    
+                    # 查找客户
+                    try:
+                        customer = Customer.objects.get(name=customer_name)
+                    except Customer.DoesNotExist:
+                        error_count += 1
+                        errors.append(f'第{index+2}行: 客户不存在')
+                        continue
+                    
+                    # 创建问题记录
+                    problem = Problem(
+                        customer=customer,
+                        title=title,
+                        description=description,
+                        submitter=submitter,
+                        status=status if status else 'pending',
+                        solution=solution if solution else '',
+                        source_customer_type=customer.customer_type
+                    )
+                    
+                    # 处理处理人
+                    if handler_name:
+                        from django.contrib.auth.models import User
+                        try:
+                            handler = User.objects.get(username=handler_name)
+                            problem.handler = handler
+                        except User.DoesNotExist:
+                            pass
+                    
+                    problem.save()
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f'第{index+2}行: {str(e)}')
+            
+            # 记录操作日志
+            try:
+                OperationLog.objects.create(
+                    user=request.user,
+                    action='导入问题记录',
+                    object_type='Problem',
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    details=f'导入问题记录: 成功 {success_count} 条, 失败 {error_count} 条'
+                )
+            except Exception as e:
+                # 如果外键约束失败，尝试不设置user字段
+                OperationLog.objects.create(
+                    user=None,
+                    action='导入问题记录',
+                    object_type='Problem',
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    details=f'导入问题记录: 成功 {success_count} 条, 失败 {error_count} 条'
+                )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'导入完成，成功 {success_count} 条, 失败 {error_count} 条',
+                'errors': errors,
+                'redirect_url': reverse('service:problem_list', kwargs={'customer_id': customer_id})
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'导入失败: {str(e)}'})
+
+class ProblemExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = 'service.view_problem'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get(self, request):
+        # 获取筛选参数
+        customer_id = request.GET.get('customer_id')
+        status = request.GET.get('status')
+        submitter = request.GET.get('submitter')
+        
+        # 构建查询集
+        queryset = Problem.objects.all()
+        if customer_id:
+            queryset = queryset.filter(customer_id=customer_id)
+        if status:
+            queryset = queryset.filter(status=status)
+        if submitter:
+            queryset = queryset.filter(submitter__icontains=submitter)
+        
+        # 准备导出数据
+        data = []
+        for problem in queryset:
+            data.append({
+                '客户名称': problem.customer.name,
+                '问题标题': problem.title,
+                '问题描述': problem.description,
+                '提交人': problem.submitter,
+                '提交时间': problem.submit_time.strftime('%Y-%m-%d %H:%M:%S'),
+                '状态': dict(Problem._meta.get_field('status').choices).get(problem.status, problem.status),
+                '解决方案': problem.solution,
+                '处理人': problem.handler.username if problem.handler else '',
+                '处理时间': problem.handle_time.strftime('%Y-%m-%d %H:%M:%S') if problem.handle_time else '',
+                '来源客户类型': dict(Problem._meta.get_field('source_customer_type').choices).get(problem.source_customer_type, problem.source_customer_type),
+                '关联流程': problem.related_process.name if problem.related_process else ''
+            })
+        
+        # 创建Excel文件
+        df = pd.DataFrame(data)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='问题记录')
+        output.seek(0)
+        
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='导出问题记录',
+                object_type='Problem',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'导出问题记录: {len(data)} 条'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='导出问题记录',
+                object_type='Problem',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'导出问题记录: {len(data)} 条'
+            )
+        
+        # 返回响应
+        response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=problems_{timezone.now().strftime("%Y%m%d%H%M%S")}.xlsx'
+        return response
+
+# 项目管理视图
+class ProjectListView(LoginRequiredMixin, ListView):
+    model = Project
+    template_name = 'service/project_list.html'
+    context_object_name = 'projects'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        customer_id = self.kwargs.get('customer_id')
+        return Project.objects.filter(customer_id=customer_id)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        customer_id = self.kwargs.get('customer_id')
+        context['customer_id'] = customer_id
+        context['customer'] = get_object_or_404(Customer, id=customer_id)
+        return context
+
+class ProjectCreateView(LoginRequiredMixin, CreateView):
+    model = Project
+    template_name = 'service/project_form.html'
+    fields = ['name', 'contract_start_date', 'contract_end_date', 'project_manager', 'technical_manager', 'status', 'description']
+    
+    def get_success_url(self):
+        return reverse('service:project_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
+    
+    def form_valid(self, form):
+        customer_id = self.kwargs.get('customer_id')
+        form.instance.customer = get_object_or_404(Customer, id=customer_id)
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='创建项目',
+                object_type='Project',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建项目: {self.object.name} 客户: {self.object.customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='创建项目',
+                object_type='Project',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建项目: {self.object.name} 客户: {self.object.customer.name}'
+            )
+        return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['customer_id'] = self.kwargs.get('customer_id')
+        return context
+
+class ProjectUpdateView(LoginRequiredMixin, UpdateView):
+    model = Project
+    template_name = 'service/project_form.html'
+    fields = ['name', 'contract_start_date', 'contract_end_date', 'project_manager', 'technical_manager', 'status', 'description']
+    
+    def get_success_url(self):
+        return reverse('service:project_list', kwargs={'customer_id': self.object.customer.id})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['customer_id'] = self.object.customer.id
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='更新项目',
+                object_type='Project',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新项目: {self.object.name} 客户: {self.object.customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='更新项目',
+                object_type='Project',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新项目: {self.object.name} 客户: {self.object.customer.name}'
+            )
+        return response
+
+class ProjectDeleteView(LoginRequiredMixin, DeleteView):
+    model = Project
+    template_name = 'service/project_confirm_delete.html'
+    
+    def get_success_url(self):
+        return reverse('service:project_list', kwargs={'customer_id': self.object.customer.id})
+    
+    def delete(self, request, *args, **kwargs):
+        project = self.get_object()
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='删除项目',
+                object_type='Project',
+                object_id=project.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除项目: {project.name} 客户: {project.customer.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='删除项目',
+                object_type='Project',
+                object_id=project.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除项目: {project.name} 客户: {project.customer.name}'
+            )
+        return super().delete(request, *args, **kwargs)
+
+# 文件管理视图
+class FileListView(LoginRequiredMixin, ListView):
+    model = File
+    template_name = 'service/file_list.html'
+    context_object_name = 'files'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        project_id = self.kwargs.get('project_id')
+        return File.objects.filter(project_id=project_id)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        project_id = self.kwargs.get('project_id')
+        context['project_id'] = project_id
+        context['project'] = get_object_or_404(Project, id=project_id)
+        return context
+
+class FileCreateView(LoginRequiredMixin, CreateView):
+    model = File
+    template_name = 'service/file_form.html'
+    fields = []  # 不使用表单字段，所有数据从上传文件自动提取
+    
+    def get_success_url(self):
+        return reverse('service:file_list', kwargs={'project_id': self.kwargs.get('project_id')})
+    
+    def form_valid(self, form):
+        project_id = self.kwargs.get('project_id')
+        project = get_object_or_404(Project, id=project_id)
+        form.instance.project = project
+        
+        # 尝试设置上传者，处理外键约束错误
+        try:
+            form.instance.uploader = self.request.user
+        except Exception as e:
+            form.instance.uploader = None
+        
+        # 处理文件上传
+        if 'file' in self.request.FILES:
+            file = self.request.FILES['file']
+            
+            # 检查文件是否已存在
+            existing_file = File.objects.filter(project=project, name=file.name).first()
+            if existing_file:
+                form.add_error(None, f'文件 "{file.name}" 已存在于该项目中')
+                return self.form_invalid(form)
+            
+            # 自动提取文件信息
+            form.instance.name = file.name
+            form.instance.file_type = file.name.split('.')[-1] if '.' in file.name else '未知'
+            form.instance.version = '1.0.0'  # 默认版本
+            
+            # 创建上传目录
+            upload_dir = os.path.join('uploads', f'project_{project_id}')
+            os.makedirs(upload_dir, exist_ok=True)
+            # 保存文件
+            file_path = os.path.join(upload_dir, file.name)
+            with open(file_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            # 存储文件路径
+            form.instance.file_path = file_path
+        
+        try:
+            response = super().form_valid(form)
+            # 记录操作日志
+            try:
+                OperationLog.objects.create(
+                    user=self.request.user,
+                    action='上传文件',
+                    object_type='File',
+                    object_id=self.object.id,
+                    ip_address=self.request.META.get('REMOTE_ADDR'),
+                    details=f'上传文件: {self.object.name} 项目: {self.object.project.name}'
+                )
+            except Exception as e:
+                # 如果外键约束失败，尝试不设置user字段
+                OperationLog.objects.create(
+                    user=None,
+                    action='上传文件',
+                    object_type='File',
+                    object_id=self.object.id,
+                    ip_address=self.request.META.get('REMOTE_ADDR'),
+                    details=f'上传文件: {self.object.name} 项目: {self.object.project.name}'
+                )
+            return response
+        except Exception as e:
+            # 如果保存文件时出现外键约束错误，尝试不设置uploader
+            form.instance.uploader = None
+            response = super().form_valid(form)
+            # 记录操作日志
+            try:
+                OperationLog.objects.create(
+                    user=self.request.user,
+                    action='上传文件',
+                    object_type='File',
+                    object_id=self.object.id,
+                    ip_address=self.request.META.get('REMOTE_ADDR'),
+                    details=f'上传文件: {self.object.name} 项目: {self.object.project.name}'
+                )
+            except Exception as e:
+                # 如果外键约束失败，尝试不设置user字段
+                OperationLog.objects.create(
+                    user=None,
+                    action='上传文件',
+                    object_type='File',
+                    object_id=self.object.id,
+                    ip_address=self.request.META.get('REMOTE_ADDR'),
+                    details=f'上传文件: {self.object.name} 项目: {self.object.project.name}'
+                )
+            return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['project_id'] = self.kwargs.get('project_id')
+        return context
+
+class FileDeleteView(LoginRequiredMixin, DeleteView):
+    model = File
+    template_name = 'service/file_confirm_delete.html'
+    
+    def get_success_url(self):
+        return reverse('service:file_list', kwargs={'project_id': self.object.project.id})
+    
+    def delete(self, request, *args, **kwargs):
+        file = self.get_object()
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='删除文件',
+                object_type='File',
+                object_id=file.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除文件: {file.name} 项目: {file.project.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='删除文件',
+                object_type='File',
+                object_id=file.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除文件: {file.name} 项目: {file.project.name}'
+            )
+        return super().delete(request, *args, **kwargs)
+
+# 流程管理视图
+class ProcessListView(LoginRequiredMixin, ListView):
+    model = Process
+    template_name = 'service/process_list.html'
+    context_object_name = 'processes'
+    paginate_by = 10
+    
+    def get_queryset(self):
+        project_id = self.kwargs.get('project_id')
+        return Process.objects.filter(project_id=project_id)
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        project_id = self.kwargs.get('project_id')
+        context['project_id'] = project_id
+        context['project'] = get_object_or_404(Project, id=project_id)
+        return context
+
+class ProcessCreateView(LoginRequiredMixin, CreateView):
+    model = Process
+    template_name = 'service/process_form.html'
+    fields = ['name', 'description', 'deployment_environment', 'status']
+    
+    def get_success_url(self):
+        return reverse('service:process_list', kwargs={'project_id': self.kwargs.get('project_id')})
+    
+    def form_valid(self, form):
+        project_id = self.kwargs.get('project_id')
+        form.instance.project = get_object_or_404(Project, id=project_id)
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='创建流程',
+                object_type='Process',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建流程: {self.object.name} 项目: {self.object.project.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='创建流程',
+                object_type='Process',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'创建流程: {self.object.name} 项目: {self.object.project.name}'
+            )
+        return response
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['project_id'] = self.kwargs.get('project_id')
+        return context
+
+class ProcessUpdateView(LoginRequiredMixin, UpdateView):
+    model = Process
+    template_name = 'service/process_form.html'
+    fields = ['name', 'description', 'deployment_environment', 'status']
+    
+    def get_success_url(self):
+        return reverse('service:process_list', kwargs={'project_id': self.object.project.id})
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['project_id'] = self.object.project.id
+        return context
+    
+    def form_valid(self, form):
+        response = super().form_valid(form)
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=self.request.user,
+                action='更新流程',
+                object_type='Process',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新流程: {self.object.name} 项目: {self.object.project.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='更新流程',
+                object_type='Process',
+                object_id=self.object.id,
+                ip_address=self.request.META.get('REMOTE_ADDR'),
+                details=f'更新流程: {self.object.name} 项目: {self.object.project.name}'
+            )
+        return response
+
+class ProcessDeleteView(LoginRequiredMixin, DeleteView):
+    model = Process
+    template_name = 'service/process_confirm_delete.html'
+    
+    def get_success_url(self):
+        return reverse('service:process_list', kwargs={'project_id': self.object.project.id})
+    
+    def delete(self, request, *args, **kwargs):
+        process = self.get_object()
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='删除流程',
+                object_type='Process',
+                object_id=process.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除流程: {process.name} 项目: {process.project.name}'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='删除流程',
+                object_type='Process',
+                object_id=process.id,
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'删除流程: {process.name} 项目: {process.project.name}'
+            )
+        return super().delete(request, *args, **kwargs)
+
+# 数据看板视图
+class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    template_name = 'service/dashboard.html'
+    permission_required = 'service.view_dashboard'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get(self, request):
+        # 客户类型分布
+        customer_type_distribution = Customer.objects.values('customer_type').annotate(count=Count('id'))
+        
+        # 问题状态分布
+        problem_status_distribution = Problem.objects.values('status').annotate(count=Count('id'))
+        
+        # 运维项目统计
+        project_count = Project.objects.count()
+        active_projects = Project.objects.filter(status='active').count()
+        
+        # 问题趋势（最近30天）
+        start_date = timezone.now() - timezone.timedelta(days=30)
+        problem_trend = Problem.objects.filter(submit_time__gte=start_date)\
+            .extra(select={'date': 'DATE(submit_time)'})\
+            .values('date')\
+            .annotate(count=Count('id'))\
+            .order_by('date')
+        
+        context = {
+            'customer_type_distribution': customer_type_distribution,
+            'problem_status_distribution': problem_status_distribution,
+            'project_count': project_count,
+            'active_projects': active_projects,
+            'problem_trend': problem_trend
+        }
+        return render(request, self.template_name, context)
+
+# 认证相关视图
+class RegisterView(FormView):
+    template_name = 'service/register.html'
+    success_url = reverse_lazy('service:login')
+    
+    def get(self, request):
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        username = request.POST.get('username')
+        email = request.POST.get('email')
+        password1 = request.POST.get('password1')
+        password2 = request.POST.get('password2')
+        
+        # 验证密码
+        if password1 != password2:
+            messages.error(request, '两次密码输入不一致')
+            return redirect('service:register')
+        
+        # 验证用户是否已存在
+        if CustomUser.objects.filter(username=username).exists():
+            messages.error(request, '用户名已存在')
+            return redirect('service:register')
+        
+        if CustomUser.objects.filter(email=email).exists():
+            messages.error(request, '邮箱已被注册')
+            return redirect('service:register')
+        
+        # 创建用户
+        user = CustomUser.objects.create_user(
+            username=username,
+            email=email,
+            password=password1,
+            is_active=False
+        )
+        
+        # 发送激活邮件
+        user.send_activation_email()
+        messages.success(request, '注册成功，请查看邮箱激活账号')
+        return redirect('service:login')
+
+class ActivateView(View):
+    template_name = 'service/activate.html'
+    
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            user = None
+        
+        if user is not None and default_token_generator.check_token(user, token):
+            return render(request, self.template_name, {'uidb64': uidb64, 'token': token})
+        else:
+            messages.error(request, '激活链接无效或已过期')
+            return redirect('service:login')
+    
+    def post(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            user = None
+        
+        if user is not None and default_token_generator.check_token(user, token):
+            user.is_active = True
+            user.activation_key = ''
+            user.key_expires = None
+            user.save()
+            messages.success(request, '账号激活成功，请登录')
+            return redirect('service:login')
+        else:
+            messages.error(request, '激活链接无效或已过期')
+            return redirect('service:login')
+
+class LoginView(FormView):
+    template_name = 'service/login.html'
+    success_url = reverse_lazy('service:customer_list')
+    
+    def get(self, request):
+        if request.user.is_authenticated:
+            return redirect('service:customer_list')
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        username = request.POST.get('username')
+        password = request.POST.get('password')
+        
+        user = authenticate(request, username=username, password=password)
+        
+        if user is not None:
+            if user.is_active:
+                login(request, user)
+                return redirect('service:customer_list')
+            else:
+                messages.error(request, '账号未激活，请查看邮箱激活')
+                return redirect('service:login')
+        else:
+            messages.error(request, '用户名或密码错误')
+            return redirect('service:login')
+
+class LogoutView(View):
+    def get(self, request):
+        logout(request)
+        return redirect('service:login')
+
+class PasswordResetView(FormView):
+    template_name = 'service/password_reset.html'
+    success_url = reverse_lazy('service:login')
+    
+    def get(self, request):
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        email = request.POST.get('email')
+        
+        try:
+            user = CustomUser.objects.get(email=email)
+            user.send_password_reset_email()
+            messages.success(request, '密码重置邮件已发送，请查看邮箱')
+        except CustomUser.DoesNotExist:
+            messages.error(request, '该邮箱未注册')
+        
+        return redirect('service:login')
+
+class PasswordResetConfirmView(FormView):
+    template_name = 'service/password_reset_confirm.html'
+    success_url = reverse_lazy('service:login')
+    
+    def get(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            user = None
+        
+        if user is not None and default_token_generator.check_token(user, token):
+            return render(request, self.template_name, {'uidb64': uidb64, 'token': token})
+        else:
+            messages.error(request, '重置链接无效或已过期')
+            return redirect('service:login')
+    
+    def post(self, request, uidb64, token):
+        try:
+            uid = force_str(urlsafe_base64_decode(uidb64))
+            user = CustomUser.objects.get(pk=uid)
+        except (TypeError, ValueError, OverflowError, CustomUser.DoesNotExist):
+            user = None
+        
+        if user is not None and default_token_generator.check_token(user, token):
+            password1 = request.POST.get('password1')
+            password2 = request.POST.get('password2')
+            
+            if password1 != password2:
+                messages.error(request, '两次密码输入不一致')
+                return redirect('service:password_reset_confirm', uidb64=uidb64, token=token)
+            
+            user.set_password(password1)
+            user.save()
+            messages.success(request, '密码重置成功，请登录')
+            return redirect('service:login')
+        else:
+            messages.error(request, '重置链接无效或已过期')
+            return redirect('service:login')
+
+# 根路径重定向视图
+def root_redirect(request):
+    """根路径重定向，未登录跳转到登录页，已登录跳转到客户列表页"""
+    if request.user.is_authenticated:
+        return redirect('service:customer_list')
+    else:
+        return redirect('service:login')

@@ -1,0 +1,52 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="card shadow-lg p-5">
+        <h1 class="text-center mb-5">{% if form.instance.id %}编辑客户{% else %}新增客户{% endif %}</h1>
+        <form method="post" class="mx-auto" style="max-width: 600px;">
+            {% csrf_token %}
+            
+            {% if form.errors %}
+                <div class="alert alert-danger mb-4">
+                    <strong>错误：</strong>
+                    <ul>
+                        {% for field, errors in form.errors.items %}
+                            {% for error in errors %}
+                                <li>{{ error }}</li>
+                            {% endfor %}
+                        {% endfor %}
+                    </ul>
+                </div>
+            {% endif %}
+            
+            <div class="form-group mb-4">
+                {{ form.as_p }}
+            </div>
+            
+            {% if form.instance.id and form.instance.customer_type == 'trial' %}
+            <h3 class="mt-5 mb-3">试用信息</h3>
+            <div class="form-group mb-4">
+                <label for="trial_start_time" class="form-label fs-5">试用开始时间</label>
+                <input type="datetime-local" class="form-control form-control-lg" id="trial_start_time" name="trial_start_time" value="{{ trial_info.trial_start_time|date:'Y-m-d\\TH:i' }}">
+            </div>
+            <div class="form-group mb-4">
+                <label for="trial_end_time" class="form-label fs-5">试用到期时间</label>
+                <input type="datetime-local" class="form-control form-control-lg" id="trial_end_time" name="trial_end_time" value="{{ trial_info.trial_end_time|date:'Y-m-d\\TH:i' }}">
+            </div>
+            <div class="form-group mb-4">
+                <div class="form-check">
+                    <input type="checkbox" class="form-check-input" id="conversion_status" name="conversion_status" {% if trial_info.conversion_status %}checked{% endif %}>
+                    <label class="form-check-label fs-5" for="conversion_status">已转化</label>
+                </div>
+            </div>
+            {% endif %}
+            
+            <div class="d-flex justify-content-center gap-4 mt-5">
+                <button type="submit" class="btn btn-primary btn-lg px-5">保存</button>
+                <a href="{% url 'service:customer_list' %}" class="btn btn-secondary btn-lg px-5">取消</a>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}

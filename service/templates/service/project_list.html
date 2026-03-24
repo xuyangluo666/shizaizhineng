@@ -1,0 +1,38 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>{{ customer.name }} - 项目列表</h1>
+    <a href="{% url 'service:project_create' customer.id %}" class="btn btn-success mb-3">新增项目</a>
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>项目名称</th>
+                <th>合同期限</th>
+                <th>项目负责人</th>
+                <th>技术负责人</th>
+                <th>项目状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for project in projects %}
+            <tr>
+                <td>{{ project.name }}</td>
+                <td>{{ project.contract_start_date }} 至 {{ project.contract_end_date }}</td>
+                <td>{{ project.project_manager.username }}</td>
+                <td>{{ project.technical_manager.username }}</td>
+                <td>{{ project.get_status_display }}</td>
+                <td>
+                    <a href="{% url 'service:file_list' project.id %}" class="btn btn-sm btn-info">文件管理</a>
+                    <a href="{% url 'service:process_list' project.id %}" class="btn btn-sm btn-info">流程管理</a>
+                    <a href="{% url 'service:project_update' project.id %}" class="btn btn-sm btn-warning">编辑</a>
+                    <a href="{% url 'service:project_delete' project.id %}" class="btn btn-sm btn-danger">删除</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <a href="{% url 'service:customer_detail' customer.id %}" class="btn btn-secondary">返回客户详情</a>
+</div>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-danger text-white text-center">
+                    <h3>无权限访问</h3>
+                </div>
+                <div class="card-body text-center">
+                    <div class="mb-4">
+                        <i class="fas fa-exclamation-circle text-danger" style="font-size: 4rem;"></i>
+                    </div>
+                    <h4>您没有执行此操作的权限</h4>
+                    <p class="mt-3">抱歉，您当前的用户权限不足以执行此操作。</p>
+                    <p>请联系系统管理员获取相应权限。</p>
+                    <div class="mt-5">
+                        <a href="{% url 'service:customer_list' %}" class="btn btn-primary">返回客户列表</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

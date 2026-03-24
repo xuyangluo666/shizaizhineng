@@ -1,0 +1,77 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>客户列表</h1>
+    
+    <!-- 搜索和筛选 -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <form method="get" class="form-inline">
+                <input type="text" name="search" placeholder="搜索客户名称" class="form-control mr-2" value="{{ request.GET.search }}">
+                <select name="type" class="form-control mr-2" style="height: 60px;">
+                    <option value="">全部类型</option>
+                    <option value="trial" {% if request.GET.type == 'trial' %}selected{% endif %}>试用客户</option>
+                    <option value="self_develop" {% if request.GET.type == 'self_develop' %}selected{% endif %}>自开发客户</option>
+                    <option value="operations" {% if request.GET.type == 'operations' %}selected{% endif %}>售后运维客户</option>
+                </select>
+                <button type="submit" class="btn btn-primary">筛选</button>
+            </form>
+        </div>
+        <div class="col-md-6 text-right">
+            <a href="{% url 'service:customer_create' %}" class="btn btn-success">新增客户</a>
+        </div>
+    </div>
+    
+    <!-- 客户列表 -->
+    <table class="table table-striped">
+        <thead>
+            <tr>
+                <th>客户名称</th>
+                <th>客户类型</th>
+                <th>当前状态</th>
+                <th>负责人</th>
+                <th>最近更新时间</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for customer in customers %}
+            <tr>
+                <td><a href="{% url 'service:customer_detail' customer.id %}">{{ customer.name }}</a></td>
+                <td>{{ customer.get_customer_type_display }}</td>
+                <td>{{ customer.get_status_display }}</td>
+                <td>{{ customer.contact_person }}</td>
+                <td>{{ customer.updated_at|date:"Y-m-d H:i:s" }}</td>
+                <td>
+                    <a href="{% url 'service:customer_update' customer.id %}" class="btn btn-sm btn-info">编辑</a>
+                    <a href="{% url 'service:customer_delete' customer.id %}" class="btn btn-sm btn-danger">删除</a>
+                    {% if customer.customer_type != 'operations' %}
+                    <a href="{% url 'service:customer_change_type' customer.id %}" class="btn btn-sm btn-warning">变更类型</a>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    
+    <!-- 分页 -->
+    <div class="pagination">
+        <span class="step-links">
+            {% if page_obj.has_previous %}
+                <a href="?page=1{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">第一页</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">上一页</a>
+            {% endif %}
+            
+            <span class="current">
+                第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.type %}&type={{ request.GET.type }}{% endif %}">最后一页</a>
+            {% endif %}
+        </span>
+    </div>
+</div>
+{% endblock %}

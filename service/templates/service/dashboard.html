@@ -1,0 +1,78 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <h1>数据看板</h1>
+    
+    <div class="row">
+        <!-- 客户类型分布 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    客户类型分布
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for item in customer_type_distribution %}
+                        <li class="list-group-item">
+                            {% if item.customer_type == 'trial' %}试用客户{% elif item.customer_type == 'self_develop' %}自开发客户{% elif item.customer_type == 'operations' %}售后运维客户{% endif %}: {{ item.count }}个
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 问题状态分布 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    问题状态分布
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for item in problem_status_distribution %}
+                        <li class="list-group-item">
+                            {% if item.status == 'pending' %}待处理{% elif item.status == 'processing' %}处理中{% elif item.status == 'completed' %}已完成{% endif %}: {{ item.count }}个
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- 运维项目统计 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    运维项目统计
+                </div>
+                <div class="card-body">
+                    <p>总项目数: {{ project_count }}个</p>
+                    <p>进行中项目: {{ active_projects }}个</p>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 问题趋势 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    最近30天问题趋势
+                </div>
+                <div class="card-body">
+                    <ul class="list-group">
+                        {% for item in problem_trend %}
+                        <li class="list-group-item">
+                            {{ item.date }}: {{ item.count }}个
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
