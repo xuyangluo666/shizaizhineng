@@ -21,7 +21,7 @@
                 <td>{{ process.name }}</td>
                 <td>{{ process.description }}</td>
                 <td>{{ process.get_deployment_environment_display }}</td>
-                <td>{{ process.get_status_display }}</td>
+                <td>{% if process.status == 'error' %}<span style="color: red; animation: blink 1s infinite;">{{ process.get_status_display }}</span>{% else %}{{ process.get_status_display }}{% endif %}</td>
                 <td>{{ process.update_time|date:"Y-m-d H:i:s" }}</td>
                 <td>
                     <a href="{% url 'service:process_update' process.id %}" class="btn btn-sm btn-warning">编辑</a>

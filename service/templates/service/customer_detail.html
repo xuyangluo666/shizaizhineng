@@ -29,7 +29,7 @@
                     <p style="margin: 0; font-size: 0.85rem;"><strong>客户类型：</strong>{{ customer.get_customer_type_display }}</p>
                 </div>
                 <div class="col-md-3" style="padding: 0 0.5rem;">
-                    <p style="margin: 0; font-size: 0.85rem;"><strong>当前状态：</strong>{{ customer.get_status_display }}</p>
+                    <p style="margin: 0; font-size: 0.85rem;"><strong>当前状态：</strong>{% if customer.status == 'abnormal' %}<span style="color: red; animation: blink 1s infinite;">{{ customer.get_status_display }}</span>{% else %}{{ customer.get_status_display }}{% endif %}</p>
                 </div>
                 <div class="col-md-3" style="padding: 0 0.5rem;">
                     <p style="margin: 0; font-size: 0.85rem;"><strong>负责人：</strong>{{ customer.contact_person }}</p>
@@ -117,12 +117,6 @@
                     <div class="col-md-3">
                         <a href="{% url 'service:problem_export' %}?customer_id={{ customer.id }}" class="btn btn-info w-100">导出</a>
                     </div>
-                    <div class="col-md-3">
-                        <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-danger w-100" onclick="return confirm('确定要批量删除吗？')">批量删除</button>
-                        </form>
-                    </div>
                 </div>
                 <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
                     {% csrf_token %}
@@ -207,6 +201,9 @@
                             {% endfor %}
                         </tbody>
                     </table>
+                    <div class="mt-3">
+                        <button type="button" class="btn btn-danger" onclick="confirmBatchDelete()">批量删除</button>
+                    </div>
                 </form>
             </div>
         </div>
@@ -223,12 +220,6 @@
             </div>
             <div class="col-md-3">
                 <a href="{% url 'service:problem_export' %}?customer_id={{ customer.id }}" class="btn btn-info w-100">导出</a>
-            </div>
-            <div class="col-md-3">
-                <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
-                    {% csrf_token %}
-                    <button type="submit" class="btn btn-danger w-100" onclick="return confirm('确定要批量删除吗？')">批量删除</button>
-                </form>
             </div>
         </div>
         <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
@@ -310,6 +301,9 @@
                     {% endfor %}
                 </tbody>
             </table>
+            <div class="mt-3">
+                <button type="button" class="btn btn-danger" onclick="confirmBatchDelete()">批量删除</button>
+            </div>
         </form>
     </div>
     {% endif %}
@@ -324,11 +318,34 @@
 
 <script>
     // 全选/取消全选
-    document.getElementById('select-all').addEventListener('change', function() {
-        var checkboxes = document.querySelectorAll('input[name="problem_ids"]');
-        checkboxes.forEach(function(checkbox) {
-            checkbox.checked = this.checked;
-        }.bind(this));
+    document.querySelectorAll('#select-all').forEach(function(checkbox) {
+        checkbox.addEventListener('change', function() {
+            var form = this.closest('form');
+            var checkboxes = form.querySelectorAll('input[name="problem_ids"]');
+            checkboxes.forEach(function(cb) {
+                cb.checked = checkbox.checked;
+            });
+        });
     });
+    
+    // 批量删除确认
+    function confirmBatchDelete() {
+        var checkboxes = document.querySelectorAll('input[name="problem_ids"]:checked');
+        var selectedCount = checkboxes.length;
+        
+        if (selectedCount === 0) {
+            alert('请选择要删除的问题');
+            return;
+        }
+        
+        var message = selectedCount === 1 ? '确定要删除1个问题吗？' : `确定要删除${selectedCount}个问题吗？`;
+        if (confirm(message)) {
+            // 找到包含选中复选框的表单并提交
+            if (selectedCount > 0) {
+                var form = checkboxes[0].closest('form');
+                form.submit();
+            }
+        }
+    }
 </script>
 {% endblock %}

@@ -40,7 +40,7 @@
             <tr>
                 <td><a href="{% url 'service:customer_detail' customer.id %}">{{ customer.name }}</a></td>
                 <td>{{ customer.get_customer_type_display }}</td>
-                <td>{{ customer.get_status_display }}</td>
+                <td>{% if customer.status == 'abnormal' %}<span style="color: red; animation: blink 1s infinite;">{{ customer.get_status_display }}</span>{% else %}{{ customer.get_status_display }}{% endif %}</td>
                 <td>{{ customer.contact_person }}</td>
                 <td>{{ customer.updated_at|date:"Y-m-d H:i:s" }}</td>
                 <td>

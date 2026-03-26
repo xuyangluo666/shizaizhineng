@@ -21,7 +21,7 @@ from .models import (
     CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
     Project, File, Process, OperationLog,
     CUSTOMER_TYPE_TRIAL, CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS,
-    CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_TRIALING, CUSTOMER_STATUS_OPERATING
+    CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_ABNORMAL
 )
 
 # 客户管理视图
@@ -281,7 +281,7 @@ class CustomerTypeChangeView(LoginRequiredMixin, PermissionRequiredMixin, View):
         customer.customer_type = new_type
         # 更新客户状态
         if new_type == CUSTOMER_TYPE_OPERATIONS:
-            customer.status = CUSTOMER_STATUS_OPERATING
+            customer.status = CUSTOMER_STATUS_NORMAL
         elif new_type == CUSTOMER_TYPE_SELF_DEVELOP:
             customer.status = CUSTOMER_STATUS_NORMAL
         customer.save()
@@ -333,19 +333,10 @@ class ProblemListView(LoginRequiredMixin, ListView):
         
         # 筛选功能
         status = self.request.GET.get('status', '')
-        submitter = self.request.GET.get('submitter', '')
-        start_date = self.request.GET.get('start_date', '')
-        end_date = self.request.GET.get('end_date', '')
         related_process = self.request.GET.get('related_process', '')
         
         if status:
             queryset = queryset.filter(status=status)
-        if submitter:
-            queryset = queryset.filter(submitter__icontains=submitter)
-        if start_date:
-            queryset = queryset.filter(submit_time__gte=start_date)
-        if end_date:
-            queryset = queryset.filter(submit_time__lte=end_date)
         if related_process:
             queryset = queryset.filter(related_process_id=related_process)
         
@@ -366,29 +357,18 @@ class ProblemListView(LoginRequiredMixin, ListView):
 class ProblemCreateView(LoginRequiredMixin, CreateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'submitter', 'status', 'problem_reason', 'reason_type', 'solution', 'is_solved', 'solve_time', 'handler', 'handle_time', 'man_days', 'related_process']
+    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'status', 'problem_reason', 'reason_type', 'solution', 'solve_time', 'handler', 'man_days', 'related_process']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
     
     def get_initial(self):
         initial = super().get_initial()
-        customer_id = self.kwargs.get('customer_id')
-        customer = get_object_or_404(Customer, id=customer_id)
-        initial['source_customer_type'] = customer.customer_type
         return initial
     
     def form_valid(self, form):
         customer_id = self.kwargs.get('customer_id')
         form.instance.customer = get_object_or_404(Customer, id=customer_id)
-        # 设置来源客户类型
-        form.instance.source_customer_type = form.instance.customer.customer_type
-        # 如果状态为已完成，设置处理时间
-        if form.cleaned_data['status'] == 'completed':
-            form.instance.handle_time = timezone.now()
-        # 如果问题已解决，设置解决时间
-        if form.cleaned_data.get('is_solved') == 'yes' and not form.instance.solve_time:
-            form.instance.solve_time = timezone.now()
         response = super().form_valid(form)
         # 记录操作日志
         try:
@@ -426,18 +406,12 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
 class ProblemUpdateView(LoginRequiredMixin, UpdateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'submitter', 'status', 'problem_reason', 'reason_type', 'solution', 'is_solved', 'solve_time', 'handler', 'handle_time', 'man_days', 'related_process']
+    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'status', 'problem_reason', 'reason_type', 'solution', 'solve_time', 'handler', 'man_days', 'related_process']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.object.customer.id})
     
     def form_valid(self, form):
-        # 如果状态为已完成，设置处理时间
-        if form.cleaned_data['status'] == 'completed' and not form.instance.handle_time:
-            form.instance.handle_time = timezone.now()
-        # 如果问题已解决，设置解决时间
-        if form.cleaned_data.get('is_solved') == 'yes' and not form.instance.solve_time:
-            form.instance.solve_time = timezone.now()
         response = super().form_valid(form)
         # 记录操作日志
         try:
@@ -540,8 +514,12 @@ class ProblemBatchDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
                         ip_address=request.META.get('REMOTE_ADDR'),
                         details=f'批量删除问题: {problem.title} 客户: {problem.customer.name}'
                     )
+            delete_count = problems.count()
             problems.delete()
-            return JsonResponse({'success': True, 'message': '批量删除成功'})
+            if delete_count == 1:
+                return JsonResponse({'success': True, 'message': '成功删除1个问题'})
+            else:
+                return JsonResponse({'success': True, 'message': f'成功删除{delete_count}个问题'})
         return JsonResponse({'success': False, 'message': '请选择要删除的问题'})
 
 class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
@@ -553,6 +531,24 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         return render(self.request, 'service/permission_denied.html', status=403)
     
     def get(self, request, customer_id):
+        # 检查是否是模板下载请求
+        if request.GET.get('action') == 'download_template':
+            customer = get_object_or_404(Customer, id=customer_id)
+            if customer.customer_type == 'operations':
+                template_path = 'service/templates/service/operation_import_template.xlsx'
+                filename = '运维记录导入模板.xlsx'
+            else:
+                template_path = 'service/templates/service/problem_import_template.xlsx'
+                filename = '问题记录导入模板.xlsx'
+            
+            try:
+                with open(template_path, 'rb') as f:
+                    response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    response['Content-Disposition'] = f'attachment; filename={filename}'
+                    return response
+            except FileNotFoundError:
+                return JsonResponse({'success': False, 'message': '模板文件不存在'})
+        
         return render(request, self.template_name, {'customer_id': customer_id})
     
     def post(self, request, customer_id):
@@ -561,8 +557,40 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         
         file = request.FILES['file']
         try:
-            # 读取Excel文件
-            df = pd.read_excel(file)
+            # 获取文件扩展名
+            file_name = file.name
+            file_extension = file_name.split('.')[-1].lower()
+            
+            # 读取文件
+            try:
+                # 先检查文件前几个字节，判断是否为有效的Excel文件
+                file_content = file.read(1024)
+                file.seek(0)  # 重置文件指针
+                
+                # 检查是否为有效的Excel文件
+                if file_extension in ['xlsx']:
+                    # xlsx文件应该以PK开头（ZIP格式）
+                    if not file_content.startswith(b'PK'):
+                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xlsx文件'})
+                    # 尝试使用openpyxl引擎（适用于.xlsx文件）
+                    df = pd.read_excel(file, engine='openpyxl')
+                elif file_extension in ['xls']:
+                    # xls文件应该以特定的BOF记录开头
+                    if not file_content.startswith(b'\xd0\xcf\x11\xe0'):
+                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xls文件'})
+                    # 尝试使用xlrd引擎（适用于.xls文件）
+                    df = pd.read_excel(file, engine='xlrd')
+                elif file_extension in ['csv']:
+                    # 读取CSV文件，尝试不同的编码
+                    try:
+                        df = pd.read_csv(file, encoding='utf-8-sig')
+                    except UnicodeDecodeError:
+                        file.seek(0)
+                        df = pd.read_csv(file, encoding='gbk')
+                else:
+                    return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
             # 处理数据
             success_count = 0
             error_count = 0
@@ -571,15 +599,20 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             for index, row in df.iterrows():
                 try:
                     customer_name = row.get('客户名称')
-                    title = row.get('问题标题')
+                    title = row.get('问题标题') or row.get('运维标题')
                     description = row.get('问题描述')
-                    submitter = row.get('提交人')
+                    occurrence_time = row.get('出现时间')
                     status = row.get('状态')
+                    problem_reason = row.get('问题原因')
+                    reason_type = row.get('原因分类')
                     solution = row.get('解决方案')
+                    solve_time = row.get('解决时间')
                     handler_name = row.get('处理人')
+                    man_days = row.get('人天')
+                    related_process_name = row.get('关联流程')
                     
                     # 验证必填字段
-                    if not customer_name or not title or not description or not submitter:
+                    if not customer_name or not title or not description:
                         error_count += 1
                         errors.append(f'第{index+2}行: 缺少必填字段')
                         continue
@@ -592,25 +625,78 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                         errors.append(f'第{index+2}行: 客户不存在')
                         continue
                     
+                    # 处理运维记录的必填字段
+                    if customer.customer_type == 'operations':
+                        if not man_days:
+                            error_count += 1
+                            errors.append(f'第{index+2}行: 运维记录的人天为必填字段')
+                            continue
+                        if not related_process_name:
+                            error_count += 1
+                            errors.append(f'第{index+2}行: 运维记录的关联流程为必填字段')
+                            continue
+                    
                     # 创建问题记录
                     problem = Problem(
                         customer=customer,
                         title=title,
                         description=description,
-                        submitter=submitter,
                         status=status if status else 'pending',
-                        solution=solution if solution else '',
-                        source_customer_type=customer.customer_type
+                        problem_reason=problem_reason if problem_reason else '',
+                        solution=solution if solution else ''
                     )
+                    
+                    # 处理出现时间
+                    if occurrence_time:
+                        try:
+                            problem.occurrence_time = pd.to_datetime(occurrence_time)
+                        except:
+                            pass
+                    
+                    # 处理原因分类
+                    if reason_type:
+                        problem.reason_type = reason_type
+                    
+                    # 处理解决时间
+                    if solve_time:
+                        try:
+                            problem.solve_time = pd.to_datetime(solve_time)
+                        except:
+                            pass
                     
                     # 处理处理人
                     if handler_name:
-                        from django.contrib.auth.models import User
                         try:
-                            handler = User.objects.get(username=handler_name)
+                            handler = CustomUser.objects.get(username=handler_name)
                             problem.handler = handler
-                        except User.DoesNotExist:
+                        except CustomUser.DoesNotExist:
                             pass
+                    
+                    # 处理人天
+                    if man_days:
+                        problem.man_days = man_days
+                    
+                    # 处理关联流程
+                    if related_process_name and customer.customer_type == 'operations':
+                        try:
+                            # 查找该客户下的所有项目
+                            projects = Project.objects.filter(customer=customer)
+                            # 查找关联流程
+                            for project in projects:
+                                try:
+                                    process = Process.objects.get(project=project, name=related_process_name)
+                                    problem.related_process = process
+                                    break
+                                except Process.DoesNotExist:
+                                    continue
+                            if not problem.related_process:
+                                error_count += 1
+                                errors.append(f'第{index+2}行: 关联流程不存在')
+                                continue
+                        except Exception as e:
+                            error_count += 1
+                            errors.append(f'第{index+2}行: 关联流程处理失败: {str(e)}')
+                            continue
                     
                     problem.save()
                     success_count += 1
@@ -659,7 +745,6 @@ class ProblemExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         # 获取筛选参数
         customer_id = request.GET.get('customer_id')
         status = request.GET.get('status')
-        submitter = request.GET.get('submitter')
         
         # 构建查询集
         queryset = Problem.objects.all()
@@ -667,25 +752,30 @@ class ProblemExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             queryset = queryset.filter(customer_id=customer_id)
         if status:
             queryset = queryset.filter(status=status)
-        if submitter:
-            queryset = queryset.filter(submitter__icontains=submitter)
         
         # 准备导出数据
         data = []
         for problem in queryset:
-            data.append({
+            # 基础字段
+            row = {
                 '客户名称': problem.customer.name,
                 '问题标题': problem.title,
                 '问题描述': problem.description,
-                '提交人': problem.submitter,
-                '提交时间': problem.submit_time.strftime('%Y-%m-%d %H:%M:%S'),
+                '出现时间': problem.occurrence_time.strftime('%Y-%m-%d %H:%M:%S') if problem.occurrence_time else '',
                 '状态': dict(Problem._meta.get_field('status').choices).get(problem.status, problem.status),
+                '问题原因': problem.problem_reason,
+                '原因分类': dict(Problem._meta.get_field('reason_type').choices).get(problem.reason_type, problem.reason_type),
                 '解决方案': problem.solution,
-                '处理人': problem.handler.username if problem.handler else '',
-                '处理时间': problem.handle_time.strftime('%Y-%m-%d %H:%M:%S') if problem.handle_time else '',
-                '来源客户类型': dict(Problem._meta.get_field('source_customer_type').choices).get(problem.source_customer_type, problem.source_customer_type),
-                '关联流程': problem.related_process.name if problem.related_process else ''
-            })
+                '解决时间': problem.solve_time.strftime('%Y-%m-%d %H:%M:%S') if problem.solve_time else '',
+                '处理人': problem.handler.username if problem.handler else ''
+            }
+            
+            # 运维记录特有字段
+            if problem.customer.customer_type == 'operations':
+                row['人天'] = problem.man_days if problem.man_days else ''
+                row['关联流程'] = problem.related_process.name if problem.related_process else ''
+            
+            data.append(row)
         
         # 创建Excel文件
         df = pd.DataFrame(data)
@@ -1138,8 +1228,8 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
         
         # 问题趋势（最近30天）
         start_date = timezone.now() - timezone.timedelta(days=30)
-        problem_trend = Problem.objects.filter(submit_time__gte=start_date)\
-            .extra(select={'date': 'DATE(submit_time)'})\
+        problem_trend = Problem.objects.filter(occurrence_time__gte=start_date)\
+            .extra(select={'date': 'DATE(occurrence_time)'})\
             .values('date')\
             .annotate(count=Count('id'))\
             .order_by('date')
@@ -1240,6 +1330,20 @@ class LoginView(FormView):
     def post(self, request):
         username = request.POST.get('username')
         password = request.POST.get('password')
+        resend_email = request.POST.get('resend_email')
+        
+        # 检查是否请求重新发送激活邮件
+        if resend_email:
+            try:
+                user = CustomUser.objects.get(username=username)
+                if not user.is_active:
+                    user.send_activation_email()
+                    messages.success(request, '激活邮件已重新发送，请查看邮箱')
+                else:
+                    messages.error(request, '账号已激活，请直接登录')
+            except CustomUser.DoesNotExist:
+                messages.error(request, '用户名不存在')
+            return redirect('service:login')
         
         user = authenticate(request, username=username, password=password)
         
@@ -1251,6 +1355,14 @@ class LoginView(FormView):
                 messages.error(request, '账号未激活，请查看邮箱激活')
                 return redirect('service:login')
         else:
+            # 检查是否存在该用户名且未激活的用户
+            try:
+                user = CustomUser.objects.get(username=username)
+                if not user.is_active:
+                    messages.error(request, '账号未激活，是否重新发送激活邮件？')
+                    return render(request, self.template_name, {'username': username, 'not_activated': True})
+            except CustomUser.DoesNotExist:
+                pass
             messages.error(request, '用户名或密码错误')
             return redirect('service:login')
 
@@ -1267,14 +1379,15 @@ class PasswordResetView(FormView):
         return render(request, self.template_name)
     
     def post(self, request):
+        username = request.POST.get('username')
         email = request.POST.get('email')
         
         try:
-            user = CustomUser.objects.get(email=email)
+            user = CustomUser.objects.get(username=username, email=email)
             user.send_password_reset_email()
             messages.success(request, '密码重置邮件已发送，请查看邮箱')
         except CustomUser.DoesNotExist:
-            messages.error(request, '该邮箱未注册')
+            messages.error(request, '用户名和邮箱不匹配')
         
         return redirect('service:login')
 

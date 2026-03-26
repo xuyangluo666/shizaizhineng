@@ -20,12 +20,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-t@il@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g'
+SECRET_KEY = 'django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['shizaizhineng.gnway.cc', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -125,6 +125,9 @@ ACCOUNT_ACTIVATION_DAYS = 7
 
 # Custom user model
 AUTH_USER_MODEL = 'service.CustomUser'
+
+# Site URL for emails and links
+SITE_URL = 'http://shizaizhineng.gnway.cc:15532'
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [

@@ -1,40 +1,174 @@
-{% extends 'service/base.html' %}
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户登录 - RPA售后服务管理系统</title>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 
 {% block content %}
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header bg-primary text-white text-center">
-                    <h3>用户登录</h3>
-                </div>
-                <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}" role="alert">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-                    <form method="post" action="{% url 'service:login' %}">
-                        {% csrf_token %}
-                        <div class="form-group mb-3">
-                            <label for="username">用户名</label>
-                            <input type="text" class="form-control" id="username" name="username" required>
+<style>
+    .login-container {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        margin: 0;
+        padding: 0 5%;
+    }
+    .login-left {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
+    .system-name {
+        font-size: 3rem;
+        font-weight: 700;
+        text-align: center;
+        line-height: 1.2;
+    }
+    .system-tagline {
+        font-size: 1.2rem;
+        margin-top: 1rem;
+        opacity: 0.9;
+        text-align: center;
+    }
+    .login-right {
+        width: 450px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem;
+    }
+    .login-card {
+        width: 100%;
+        max-width: 450px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+        border-radius: 10px;
+        overflow: hidden;
+    }
+    .login-header {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        padding: 1.5rem;
+        text-align: center;
+    }
+    .login-body {
+        padding: 2rem;
+    }
+    .form-group {
+        margin-bottom: 1.5rem;
+    }
+    .form-control {
+        border-radius: 8px;
+        padding: 0.75rem;
+        border: 1px solid #e0e0e0;
+        transition: all 0.3s ease;
+    }
+    .form-control:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+    }
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border: none;
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+    }
+    .btn-secondary {
+        border-radius: 8px;
+        padding: 0.75rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+    }
+    .login-footer {
+        margin-top: 1.5rem;
+        text-align: center;
+    }
+    .login-footer a {
+        color: #667eea;
+        text-decoration: none;
+        transition: color 0.3s ease;
+    }
+    .login-footer a:hover {
+        color: #764ba2;
+        text-decoration: underline;
+    }
+    .welcome-text {
+        max-width: 500px;
+    }
+    .welcome-text h1 {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+        font-weight: 700;
+    }
+    .welcome-text p {
+        font-size: 1.2rem;
+        opacity: 0.9;
+    }
+</style>
+<div class="login-container">
+    <!-- 左侧系统名称 -->
+    <div class="login-left">
+        <div>
+            <div class="system-name">RPA售后服务管理系统</div>
+            <div class="system-tagline">高效管理客户服务，提升企业效率</div>
+        </div>
+    </div>
+    <!-- 右侧登录表单 -->
+    <div class="login-right">
+        <div class="login-card">
+            <div class="login-header">
+                <h3>用户登录</h3>
+            </div>
+            <div class="login-body">
+                {% if messages %}
+                    {% for message in messages %}
+                        <div class="alert alert-{{ message.tags }}" role="alert">
+                            {{ message }}
                         </div>
-                        <div class="form-group mb-3">
-                            <label for="password">密码</label>
-                            <input type="password" class="form-control" id="password" name="password" required>
-                        </div>
-                        <button type="submit" class="btn btn-primary w-100">登录</button>
-                    </form>
-                    <div class="mt-3 text-center">
-                        <p><a href="{% url 'service:password_reset' %}">忘记密码？</a></p>
-                        <p>没有账号？<a href="{% url 'service:register' %}">立即注册</a></p>
+                    {% endfor %}
+                {% endif %}
+                <form method="post" action="{% url 'service:login' %}">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label for="username">用户名</label>
+                        <input type="text" class="form-control" id="username" name="username" value="{{ username }}" required>
                     </div>
+                    <div class="form-group">
+                        <label for="password">密码</label>
+                        <input type="password" class="form-control" id="password" name="password" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">登录</button>
+                </form>
+                {% if not_activated %}
+                <form method="post" action="{% url 'service:login' %}" class="mt-3">
+                    {% csrf_token %}
+                    <input type="hidden" name="username" value="{{ username }}">
+                    <input type="hidden" name="resend_email" value="1">
+                    <button type="submit" class="btn btn-secondary w-100">重新发送激活邮件</button>
+                </form>
+                {% endif %}
+                <div class="login-footer">
+                    <p><a href="{% url 'service:password_reset' %}">忘记密码？</a></p>
+                    <p>没有账号？<a href="{% url 'service:register' %}">立即注册</a></p>
                 </div>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
+</body>
+</html>

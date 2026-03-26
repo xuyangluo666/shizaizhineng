@@ -25,7 +25,7 @@ class CustomUser(AbstractUser):
         """发送激活邮件"""
         token = default_token_generator.make_token(self)
         uid = urlsafe_base64_encode(force_bytes(self.pk))
-        activation_url = f"http://localhost:8000/service/activate/{uid}/{token}/"
+        activation_url = f"{settings.SITE_URL}/service/activate/{uid}/{token}/"
         
         subject = '账号激活'
         message = f'请点击以下链接激活您的账号：\n{activation_url}'
@@ -36,20 +36,20 @@ class CustomUser(AbstractUser):
             <meta charset="UTF-8">
             <title>账号激活</title>
             <style>
-                body {
+                body {{
                     font-family: Arial, sans-serif;
                     line-height: 1.6;
                     color: #333;
-                }
-                .container {
+                }}
+                .container {{
                     max-width: 600px;
                     margin: 0 auto;
                     padding: 20px;
                     border: 1px solid #e0e0e0;
                     border-radius: 5px;
                     background-color: #f9f9f9;
-                }
-                .button {
+                }}
+                .button {{
                     display: inline-block;
                     padding: 10px 20px;
                     background-color: #007bff;
@@ -57,18 +57,18 @@ class CustomUser(AbstractUser):
                     text-decoration: none;
                     border-radius: 4px;
                     margin-top: 20px;
-                }
-                .footer {
+                }}
+                .footer {{
                     margin-top: 30px;
                     font-size: 12px;
                     color: #666;
-                }
+                }}
             </style>
         </head>
         <body>
             <div class="container">
                 <h2>账号激活</h2>
-                <p>亲爱的 {username}，</p>
+                <p>亲爱的 {self.username}，</p>
                 <p>感谢您注册RPA售后服务管理系统！</p>
                 <p>请点击下方按钮激活您的账号：</p>
                 <a href="{activation_url}" class="button">激活账号</a>
@@ -81,7 +81,7 @@ class CustomUser(AbstractUser):
             </div>
         </body>
         </html>
-        """.format(username=self.username, activation_url=activation_url)
+        """
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)
         
         self.activation_key = token
@@ -92,7 +92,7 @@ class CustomUser(AbstractUser):
         """发送密码重置邮件"""
         token = default_token_generator.make_token(self)
         uid = urlsafe_base64_encode(force_bytes(self.pk))
-        reset_url = f"http://localhost:8000/service/reset-password/{uid}/{token}/"
+        reset_url = f"{settings.SITE_URL}/service/reset-password/{uid}/{token}/"
         
         subject = '密码重置'
         message = f'请点击以下链接重置您的密码：\n{reset_url}'
@@ -103,20 +103,20 @@ class CustomUser(AbstractUser):
             <meta charset="UTF-8">
             <title>密码重置</title>
             <style>
-                body {
+                body {{
                     font-family: Arial, sans-serif;
                     line-height: 1.6;
                     color: #333;
-                }
-                .container {
+                }}
+                .container {{
                     max-width: 600px;
                     margin: 0 auto;
                     padding: 20px;
                     border: 1px solid #e0e0e0;
                     border-radius: 5px;
                     background-color: #f9f9f9;
-                }
-                .button {
+                }}
+                .button {{
                     display: inline-block;
                     padding: 10px 20px;
                     background-color: #007bff;
@@ -124,18 +124,18 @@ class CustomUser(AbstractUser):
                     text-decoration: none;
                     border-radius: 4px;
                     margin-top: 20px;
-                }
-                .footer {
+                }}
+                .footer {{
                     margin-top: 30px;
                     font-size: 12px;
                     color: #666;
-                }
+                }}
             </style>
         </head>
         <body>
             <div class="container">
                 <h2>密码重置</h2>
-                <p>亲爱的 {username}，</p>
+                <p>亲爱的 {self.username}，</p>
                 <p>我们收到了您的密码重置请求。</p>
                 <p>请点击下方按钮重置您的密码：</p>
                 <a href="{reset_url}" class="button">重置密码</a>
@@ -149,7 +149,7 @@ class CustomUser(AbstractUser):
             </div>
         </body>
         </html>
-        """.format(username=self.username, reset_url=reset_url)
+        """
         send_mail(subject, message, settings.DEFAULT_FROM_EMAIL, [self.email], html_message=html_message)
 
 # 客户类型常量
@@ -165,13 +165,11 @@ CUSTOMER_TYPE_CHOICES = [
 
 # 客户状态常量
 CUSTOMER_STATUS_NORMAL = 'normal'
-CUSTOMER_STATUS_TRIALING = 'trialing'
-CUSTOMER_STATUS_OPERATING = 'operating'
+CUSTOMER_STATUS_ABNORMAL = 'abnormal'
 
 CUSTOMER_STATUS_CHOICES = [
     (CUSTOMER_STATUS_NORMAL, '正常'),
-    (CUSTOMER_STATUS_TRIALING, '试用中'),
-    (CUSTOMER_STATUS_OPERATING, '运维中'),
+    (CUSTOMER_STATUS_ABNORMAL, '异常'),
 ]
 
 # 问题状态常量
@@ -338,8 +336,6 @@ class Problem(models.Model):
     description = models.TextField(verbose_name='问题描述')
     screenshot = models.FileField(upload_to='image', blank=True, verbose_name='问题截图')
     occurrence_time = models.DateTimeField(null=True, blank=True, verbose_name='出现时间')
-    submitter = models.CharField(max_length=100, verbose_name='提交人')
-    submit_time = models.DateTimeField(auto_now_add=True, verbose_name='提交时间')
     status = models.CharField(
         max_length=20,
         choices=PROBLEM_STATUS_CHOICES,
@@ -354,21 +350,9 @@ class Problem(models.Model):
         verbose_name='原因分类'
     )
     solution = models.TextField(blank=True, verbose_name='解决方案')
-    is_solved = models.CharField(
-        max_length=10,
-        choices=IS_SOLVED_CHOICES,
-        blank=True,
-        verbose_name='问题是否解决'
-    )
     solve_time = models.DateTimeField(null=True, blank=True, verbose_name='解决时间')
     handler = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='处理人')
-    handle_time = models.DateTimeField(null=True, blank=True, verbose_name='处理时间')
     man_days = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, verbose_name='人天')
-    source_customer_type = models.CharField(
-        max_length=20,
-        choices=CUSTOMER_TYPE_CHOICES,
-        verbose_name='来源客户类型'
-    )
     related_process = models.ForeignKey(Process, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='关联流程')
     
     class Meta:

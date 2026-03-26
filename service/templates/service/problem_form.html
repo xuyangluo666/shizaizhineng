@@ -43,11 +43,6 @@
             </div>
             
             <div class="form-group mb-4">
-                <label for="id_submitter" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}提交人{% else %}提交人{% endif %}</label>
-                {{ form.submitter }}
-            </div>
-            
-            <div class="form-group mb-4">
                 <label for="id_status" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}状态{% else %}状态{% endif %}</label>
                 {{ form.status }}
             </div>
@@ -68,11 +63,6 @@
             </div>
             
             <div class="form-group mb-4">
-                <label for="id_is_solved" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}问题是否解决{% else %}问题是否解决{% endif %}</label>
-                {{ form.is_solved }}
-            </div>
-            
-            <div class="form-group mb-4">
                 <label for="id_solve_time" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}解决时间{% else %}解决时间{% endif %}</label>
                 {{ form.solve_time }}
             </div>
@@ -80,11 +70,6 @@
             <div class="form-group mb-4">
                 <label for="id_handler" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}问题处理人{% else %}问题处理人{% endif %}</label>
                 {{ form.handler }}
-            </div>
-            
-            <div class="form-group mb-4">
-                <label for="id_handle_time" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}处理时间{% else %}处理时间{% endif %}</label>
-                {{ form.handle_time }}
             </div>
             
             {% if customer.customer_type == 'operations' %}
@@ -108,7 +93,7 @@
 
 <script>
     // 查找所有日期时间字段并将其类型改为datetime-local
-    var dateTimeFields = ['id_occurrence_time', 'id_handle_time', 'id_solve_time'];
+    var dateTimeFields = ['id_occurrence_time', 'id_solve_time'];
     dateTimeFields.forEach(function(fieldId) {
         var field = document.getElementById(fieldId);
         if (field) {

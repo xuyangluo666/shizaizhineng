@@ -1,6 +1,6 @@
 from django.contrib import admin
 from .models import (
-    Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
+    CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
     Project, File, Process, OperationLog
 )
 
@@ -18,9 +18,9 @@ class CustomerTypeChangeLogAdmin(admin.ModelAdmin):
 
 @admin.register(Problem)
 class ProblemAdmin(admin.ModelAdmin):
-    list_display = ('title', 'customer', 'submitter', 'status', 'submit_time', 'handler')
+    list_display = ('title', 'customer', 'status', 'handler')
     list_filter = ('status', 'customer__customer_type')
-    search_fields = ('title', 'description', 'submitter')
+    search_fields = ('title', 'description')
 
 @admin.register(TrialCustomer)
 class TrialCustomerAdmin(admin.ModelAdmin):
@@ -50,3 +50,10 @@ class OperationLogAdmin(admin.ModelAdmin):
     list_display = ('user', 'action', 'object_type', 'created_at', 'ip_address')
     list_filter = ('action', 'object_type')
     search_fields = ('user__username', 'action', 'details')
+
+@admin.register(CustomUser)
+class CustomUserAdmin(admin.ModelAdmin):
+    list_display = ('username', 'email', 'is_active', 'is_staff', 'date_joined')
+    list_filter = ('is_active', 'is_staff', 'is_superuser')
+    search_fields = ('username', 'email')
+    ordering = ('-date_joined',)
