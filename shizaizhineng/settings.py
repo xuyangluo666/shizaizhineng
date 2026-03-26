@@ -77,9 +77,9 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',   # 使用mysql引擎
         'NAME': 'shizaizhineng',            # 数据库名，需提前创建
-        'USER': 'lxyuser',                  # 数据库用户名
-        'PASSWORD': 'Lxy1463240856!',               # 密码
-        'HOST': '47.121.141.81',                       # 数据库主机地址，本地一般为127.0.0.1或localhost
+        'USER': 'root',                  # 数据库用户名
+        'PASSWORD': 'root123',               # 密码
+        'HOST': 'mysql',                       # k8s中MySQL服务的名称
         'PORT': '3306',                            # 端口，默认3306
         'OPTIONS': {
             'charset': 'utf8mb4',                   # 推荐使用utf8mb4编码，支持emoji
