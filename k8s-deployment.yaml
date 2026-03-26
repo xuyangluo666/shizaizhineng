@@ -96,8 +96,8 @@ metadata:
 type: Opaque
 stringData:
   secret-key: "django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g"
-  db-user: "lxyuser"
-  db-password: "Lxy1463240856!"
+  db-user: "root"
+  db-password: "root123"
 ---
 apiVersion: apps/v1
 kind: Deployment
