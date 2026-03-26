@@ -70,7 +70,7 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
 class CustomerCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
     model = Customer
     template_name = 'service/customer_form.html'
-    fields = ['name', 'customer_type', 'status', 'contact_person']
+    fields = ['name', 'customer_type', 'status', 'contact_person', 'opportunity_number', 'customer_level']
     success_url = reverse_lazy('service:customer_list')
     permission_required = 'service.add_customer'
     
@@ -113,7 +113,7 @@ class CustomerCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView
 class CustomerUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
     model = Customer
     template_name = 'service/customer_form.html'
-    fields = ['name', 'status', 'contact_person']
+    fields = ['name', 'status', 'contact_person', 'opportunity_number', 'customer_level']
     success_url = reverse_lazy('service:customer_list')
     permission_required = 'service.change_customer'
     

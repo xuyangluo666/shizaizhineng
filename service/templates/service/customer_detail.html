@@ -35,6 +35,22 @@
                     <p style="margin: 0; font-size: 0.85rem;"><strong>负责人：</strong>{{ customer.contact_person }}</p>
                 </div>
                 <div class="col-md-3" style="padding: 0 0.5rem;">
+                    <p style="margin: 0; font-size: 0.85rem;"><strong>商机编号：</strong>{{ customer.opportunity_number|default:"无" }}</p>
+                </div>
+                <div class="col-md-3" style="padding: 0 0.5rem;">
+                    <p style="margin: 0; font-size: 0.85rem;"><strong>客户级别：</strong>
+                        {% if customer.customer_level == 'A' %}
+                            <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
+                        {% elif customer.customer_level == 'B' %}
+                            <span style="background-color: #2196F3; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
+                        {% elif customer.customer_level == 'C' %}
+                            <span style="background-color: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
+                        {% else %}
+                            无
+                        {% endif %}
+                    </p>
+                </div>
+                <div class="col-md-3" style="padding: 0 0.5rem;">
                     <p style="margin: 0; font-size: 0.85rem;"><strong>创建时间：</strong>{{ customer.created_at|date:"Y-m-d" }}</p>
                 </div>
                 {% if customer.customer_type == 'trial' and trial_info %}

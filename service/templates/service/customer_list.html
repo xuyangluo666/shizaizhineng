@@ -31,6 +31,8 @@
                 <th>客户类型</th>
                 <th>当前状态</th>
                 <th>负责人</th>
+                <th>商机编号</th>
+                <th>客户级别</th>
                 <th>最近更新时间</th>
                 <th>操作</th>
             </tr>
@@ -42,6 +44,18 @@
                 <td>{{ customer.get_customer_type_display }}</td>
                 <td>{% if customer.status == 'abnormal' %}<span style="color: red; animation: blink 1s infinite;">{{ customer.get_status_display }}</span>{% else %}{{ customer.get_status_display }}{% endif %}</td>
                 <td>{{ customer.contact_person }}</td>
+                <td>{{ customer.opportunity_number|default:"无" }}</td>
+                <td>
+                    {% if customer.customer_level == 'A' %}
+                        <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
+                    {% elif customer.customer_level == 'B' %}
+                        <span style="background-color: #2196F3; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
+                    {% elif customer.customer_level == 'C' %}
+                        <span style="background-color: #FF9800; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
+                    {% else %}
+                        无
+                    {% endif %}
+                </td>
                 <td>{{ customer.updated_at|date:"Y-m-d H:i:s" }}</td>
                 <td>
                     <a href="{% url 'service:customer_update' customer.id %}" class="btn btn-sm btn-info">编辑</a>

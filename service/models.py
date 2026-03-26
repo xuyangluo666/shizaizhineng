@@ -172,6 +172,17 @@ CUSTOMER_STATUS_CHOICES = [
     (CUSTOMER_STATUS_ABNORMAL, '异常'),
 ]
 
+# 客户级别常量
+CUSTOMER_LEVEL_A = 'A'
+CUSTOMER_LEVEL_B = 'B'
+CUSTOMER_LEVEL_C = 'C'
+
+CUSTOMER_LEVEL_CHOICES = [
+    (CUSTOMER_LEVEL_A, 'A'),
+    (CUSTOMER_LEVEL_B, 'B'),
+    (CUSTOMER_LEVEL_C, 'C'),
+]
+
 # 问题状态常量
 PROBLEM_STATUS_PENDING = 'pending'
 PROBLEM_STATUS_PROCESSING = 'processing'
@@ -255,6 +266,13 @@ class Customer(models.Model):
         verbose_name='当前状态'
     )
     contact_person = models.CharField(max_length=100, verbose_name='负责人')
+    opportunity_number = models.CharField(max_length=100, blank=True, verbose_name='商机编号')
+    customer_level = models.CharField(
+        max_length=1,
+        choices=CUSTOMER_LEVEL_CHOICES,
+        blank=True,
+        verbose_name='客户级别'
+    )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     updated_at = models.DateTimeField(auto_now=True, verbose_name='最近更新时间')
     
