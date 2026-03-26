@@ -1,0 +1,233 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: shizaizhineng
+  namespace: default
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: shizaizhineng
+  template:
+    metadata:
+      labels:
+        app: shizaizhineng
+    spec:
+      containers:
+      - name: web
+        image: your-registry/shizaizhineng:latest
+        ports:
+        - containerPort: 8000
+        env:
+        - name: DEBUG
+          value: "False"
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: shizaizhineng-secret
+              key: secret-key
+        - name: DB_NAME
+          value: "shizaizhineng"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: shizaizhineng-secret
+              key: db-user
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: shizaizhineng-secret
+              key: db-password
+        - name: DB_HOST
+          value: "mysql"
+        - name: DB_PORT
+          value: "3306"
+        - name: REDIS_URL
+          value: "redis://redis:6379/0"
+        - name: SITE_URL
+          value: "http://your-domain.com"
+        volumeMounts:
+        - name: media-volume
+          mountPath: /app/media
+      volumes:
+      - name: media-volume
+        persistentVolumeClaim:
+          claimName: shizaizhineng-media-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: shizaizhineng
+  namespace: default
+spec:
+  selector:
+    app: shizaizhineng
+  ports:
+  - port: 80
+    targetPort: 8000
+  type: ClusterIP
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: shizaizhineng
+  namespace: default
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+spec:
+  rules:
+  - host: your-domain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: shizaizhineng
+            port:
+              number: 80
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: shizaizhineng-secret
+  namespace: default
+type: Opaque
+stringData:
+  secret-key: "django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g"
+  db-user: "lxyuser"
+  db-password: "Lxy1463240856!"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mysql
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mysql
+  template:
+    metadata:
+      labels:
+        app: mysql
+    spec:
+      containers:
+      - name: mysql
+        image: mysql:8.0
+        env:
+        - name: MYSQL_ROOT_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: shizaizhineng-secret
+              key: db-password
+        - name: MYSQL_DATABASE
+          value: "shizaizhineng"
+        - name: MYSQL_USER
+          valueFrom:
+            secretKeyRef:
+              name: shizaizhineng-secret
+              key: db-user
+        - name: MYSQL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: shizaizhineng-secret
+              key: db-password
+        ports:
+        - containerPort: 3306
+        volumeMounts:
+        - name: mysql-data
+          mountPath: /var/lib/mysql
+      volumes:
+      - name: mysql-data
+        persistentVolumeClaim:
+          claimName: mysql-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: default
+spec:
+  selector:
+    app: mysql
+  ports:
+  - port: 3306
+    targetPort: 3306
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: mysql-pvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 20Gi
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+      - name: redis
+        image: redis:6.2
+        ports:
+        - containerPort: 6379
+        volumeMounts:
+        - name: redis-data
+          mountPath: /data
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: redis-pvc
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: default
+spec:
+  selector:
+    app: redis
+  ports:
+  - port: 6379
+    targetPort: 6379
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: redis-pvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: shizaizhineng-media-pvc
+  namespace: default
+spec:
+  accessModes:
+  - ReadWriteMany
+  resources:
+    requests:
+      storage: 10Gi
