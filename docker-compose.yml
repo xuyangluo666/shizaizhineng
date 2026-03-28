@@ -20,7 +20,7 @@ services:
       - redis
 
   db:
-    image: mysql:8.0
+    image: registry.cn-hangzhou.aliyuncs.com/library/mysql:8.0
     environment:
       - MYSQL_ROOT_PASSWORD=Lxy1463240856!
       - MYSQL_DATABASE=shizaizhineng
@@ -30,7 +30,7 @@ services:
       - mysql-data:/var/lib/mysql
 
   redis:
-    image: redis:6.2
+    image: registry.cn-hangzhou.aliyuncs.com/library/redis:6.2
     volumes:
       - redis-data:/data
 
