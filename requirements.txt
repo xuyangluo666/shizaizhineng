@@ -1,4 +1,4 @@
-Django==6.0.3
+Django==5.2.12
 mysqlclient==2.2.8
 pandas==3.0.1
 openpyxl==3.1.5
