@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
 from pathlib import Path
+import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -20,12 +21,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g'
+SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
 
-ALLOWED_HOSTS = ['shizaizhineng.gnway.cc', '127.0.0.1', 'localhost']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '127.0.0.1,localhost').split(',')
 
 
 # Application definition
@@ -75,17 +76,17 @@ WSGI_APPLICATION = 'shizaizhineng.wsgi.application'
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.mysql',   # 使用mysql引擎
-        'NAME': 'shizaizhineng',            # 数据库名，需提前创建
-        'USER': 'root',                  # 数据库用户名
-        'PASSWORD': 'root123',               # 密码
-        'HOST': 'mysql',                       # k8s中MySQL服务的名称
-        'PORT': '3306',                            # 端口，默认3306
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': os.environ.get('DB_HOST', 'mysql'),
+        'USER': os.environ.get('DB_USER', 'root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'NAME': os.environ.get('DB_NAME', 'shizaizhineng'),
+        'PORT': '3306',
         'OPTIONS': {
-            'charset': 'utf8mb4',                   # 推荐使用utf8mb4编码，支持emoji
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",  # 设置SQL模式和时区
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",
         },
-        'CONN_MAX_AGE': 0,                          # 连接持久化时间，0表示每次请求后关闭
+        'CONN_MAX_AGE': 0,
     }
 }
 
@@ -150,7 +151,42 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/6.0/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Media files (Uploaded files)
 MEDIA_URL = 'media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+MEDIA_ROOT = os.environ.get('MEDIA_ROOT', BASE_DIR / 'media')
+
+# Logging configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.environ.get('LOG_FILE', BASE_DIR / 'logs' / 'django.log'),
+        },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': os.environ.get('LOG_LEVEL', 'INFO'),
+    },
+}
+
+# Cache configuration (Redis)
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': os.environ.get('REDIS_URL', 'redis://redis:6379/0'),
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        }
+    }
+}
+
+# Session configuration
+SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
+SESSION_CACHE_ALIAS = 'default'
