@@ -24,8 +24,8 @@ RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trus
 # 复制项目代码
 COPY . .
 
-# 创建静态文件目录并设置权限
-RUN mkdir -p /app/staticfiles /app/media && \
+# 创建静态文件目录和日志目录并设置权限
+RUN mkdir -p /app/staticfiles /app/media /app/logs && \
     groupadd -r appuser && useradd -r -g appuser appuser && \
     chown -R appuser:appuser /app
 
