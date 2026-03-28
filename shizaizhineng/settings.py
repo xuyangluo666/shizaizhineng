@@ -77,10 +77,10 @@ WSGI_APPLICATION = 'shizaizhineng.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': os.environ.get('DB_HOST', '127.0.0.1'),
-        'USER': os.environ.get('DB_USER', 'root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'root123'),
-        'NAME': os.environ.get('DB_NAME', 'shizaizhineng'),
+        'HOST': '127.0.0.1',
+        'USER': 'root',
+        'PASSWORD': 'root123',
+        'NAME': 'shizaizhineng',
         'PORT': '3306',
         'OPTIONS': {
             'charset': 'utf8mb4',
