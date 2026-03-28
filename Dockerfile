@@ -1,4 +1,4 @@
-FROM docker.mirrors.ustc.edu.cn/library/python:3.11-slim
+FROM m.daocloud.io/docker.io/library/python:3.11-slim
 
 WORKDIR /app
 
