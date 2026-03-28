@@ -36,4 +36,5 @@ EXPOSE 8000
 
 # 启动脚本（需要创建 entrypoint.sh 并赋予执行权限）
 COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
