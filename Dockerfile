@@ -1,11 +1,16 @@
-FROM m.daocloud.io/docker.io/library/python:3.11-slim
+FROM registry.cn-hangzhou.aliyuncs.com/library/python:3.11-slim
 
 WORKDIR /app
 
-# 使用阿里云Debian源
-RUN echo "deb http://mirrors.aliyun.com/debian bookworm main contrib non-free" > /etc/apt/sources.list && \
-    echo "deb http://mirrors.aliyun.com/debian bookworm-updates main contrib non-free" >> /etc/apt/sources.list && \
-    echo "deb http://mirrors.aliyun.com/debian-security bookworm-security main contrib non-free" >> /etc/apt/sources.list
+# 使用阿里云Debian源（trixie版本）
+RUN echo "deb http://mirrors.aliyun.com/debian trixie main contrib non-free" > /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian trixie-updates main contrib non-free" >> /etc/apt/sources.list && \
+    echo "deb http://mirrors.aliyun.com/debian-security trixie-security main contrib non-free" >> /etc/apt/sources.list && \
+    # 确保不使用官方源
+    echo "Acquire::http::Proxy \"DIRECT\";" > /etc/apt/apt.conf.d/99proxy && \
+    echo "Acquire::https::Proxy \"DIRECT\";" >> /etc/apt/apt.conf.d/99proxy && \
+    # 禁止使用官方源
+    echo "Acquire::BlockForeignRepositories \"true\";" >> /etc/apt/apt.conf.d/99proxy
 
 # 安装系统依赖并清理缓存
 RUN apt-get update -y && \ 
