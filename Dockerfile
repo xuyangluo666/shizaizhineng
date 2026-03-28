@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/library/python:3.11-slim
+FROM docker.mirrors.ustc.edu.cn/library/python:3.11-slim
 
 WORKDIR /app
 
