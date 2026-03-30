@@ -128,7 +128,7 @@ ACCOUNT_ACTIVATION_DAYS = 7
 AUTH_USER_MODEL = 'service.CustomUser'
 
 # Site URL for emails and links
-SITE_URL = 'http://shizaizhineng.gnway.cc:15532'
+SITE_URL = os.environ.get('SITE_URL', 'http://shizaizhineng.gnway.cc:15532')
 
 # Authentication backends
 AUTHENTICATION_BACKENDS = [
