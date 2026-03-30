@@ -3,6 +3,9 @@
 # 确保日志目录存在
 mkdir -p /app/logs
 
+# 确保日志文件存在
+touch /app/logs/django.log
+
 # 数据库迁移
 python manage.py migrate
 

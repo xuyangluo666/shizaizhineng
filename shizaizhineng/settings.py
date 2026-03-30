@@ -74,21 +74,21 @@ WSGI_APPLICATION = 'shizaizhineng.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql',
-        'HOST': os.environ.get('DB_HOST', 'mysql'),
-        'USER': os.environ.get('DB_USER', 'root'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
-        'NAME': os.environ.get('DB_NAME', 'shizaizhineng'),
-        'PORT': '3306',
-        'OPTIONS': {
-            'charset': 'utf8mb4',
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",
-        },
-        'CONN_MAX_AGE': 0,
-    }
-}
+# DATABASES = {
+#     'default': {
+#         'ENGINE': 'django.db.backends.mysql',
+#         'HOST': os.environ.get('DB_HOST', 'mysql'),
+#         'USER': os.environ.get('DB_USER', 'root'),
+#         'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+#         'NAME': os.environ.get('DB_NAME', 'shizaizhineng'),
+#         'PORT': '3306',
+#         'OPTIONS': {
+#             'charset': 'utf8mb4',
+#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",
+#         },
+#         'CONN_MAX_AGE': 0,
+#     }
+# }
 
 
 # Password validation
@@ -165,10 +165,10 @@ LOGGING = {
         'console': {
             'class': 'logging.StreamHandler',
         },
-        # 'file': {
-        #     'class': 'logging.FileHandler',
-        #     'filename': os.environ.get('LOG_FILE', BASE_DIR / 'logs' / 'django.log'),
-        # },
+        'file': {
+            'class': 'logging.FileHandler',
+            'filename': os.environ.get('LOG_FILE', str(BASE_DIR / 'logs' / 'django.log')),
+        },
     },
     'root': {
         'handlers': ['console', 'file'],
@@ -190,18 +190,20 @@ LOGGING = {
 # Session configuration
 # SESSION_ENGINE = 'django.contrib.sessions.backends.cache'
 # SESSION_CACHE_ALIAS = 'default'
-# DATABASES = {
-#     'default': {
-#         'ENGINE': 'django.db.backends.mysql',
-#         'HOST': '47.121.141.81',
-#         'USER': 'lxyuser',
-#         'PASSWORD': 'Lxy1463240856!',
-#         'NAME': 'shizaizhineng',
-#         'PORT': '3306',
-#         'OPTIONS': {
-#             'charset': 'utf8mb4',
-#             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",
-#         },
-#         'CONN_MAX_AGE': 0,
-#     }
-# }
+
+
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.mysql',
+        'HOST': '47.121.141.81',
+        'USER': 'lxyuser',
+        'PASSWORD': 'Lxy1463240856!',
+        'NAME': 'shizaizhineng',
+        'PORT': '3306',
+        'OPTIONS': {
+            'charset': 'utf8mb4',
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",
+        },
+        'CONN_MAX_AGE': 0,
+    }
+}
