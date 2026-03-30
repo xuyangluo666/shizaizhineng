@@ -13,43 +13,42 @@ class Migration(migrations.Migration):
         # 修复所有外键约束
         migrations.RunSQL(
             '''
-            -- 删除 CustomerTypeChangeLog 表的外键约束
-            ALTER TABLE service_customertypechangelog DROP FOREIGN KEY service_customertype_operator_id_5f7af22c_fk_auth_user;
+            -- 删除 CustomerTypeChangeLog 表的外键约束（如果存在）
+            ALTER TABLE service_customertypechangelog DROP FOREIGN KEY IF EXISTS service_customertype_operator_id_5f7af22c_fk_auth_user;
             -- 修改列类型
             ALTER TABLE service_customertypechangelog MODIFY COLUMN operator_id BIGINT NULL;
             -- 重新创建外键约束，指向 service_customuser 表
-            ALTER TABLE service_customertypechangelog ADD CONSTRAINT service_customertype_operator_id_5f7af22c_fk_service_customuser FOREIGN KEY (operator_id) REFERENCES service_customuser (id);
+            ALTER TABLE service_customertypechangelog ADD CONSTRAINT IF NOT EXISTS service_customertype_operator_id_5f7af22c_fk_service_customuser FOREIGN KEY (operator_id) REFERENCES service_customuser (id);
             
-            -- 删除 OperationLog 表的外键约束
-            ALTER TABLE service_operationlog DROP FOREIGN KEY service_operationlog_user_id_5f5501ab_fk_auth_user_id;
+            -- 删除 OperationLog 表的外键约束（如果存在）
+            ALTER TABLE service_operationlog DROP FOREIGN KEY IF EXISTS service_operationlog_user_id_5f5501ab_fk_auth_user_id;
             -- 修改列类型
             ALTER TABLE service_operationlog MODIFY COLUMN user_id BIGINT NULL;
             -- 重新创建外键约束，指向 service_customuser 表
-            ALTER TABLE service_operationlog ADD CONSTRAINT service_operationlog_user_id_5f5501ab_fk_service_customuser FOREIGN KEY (user_id) REFERENCES service_customuser (id);
+            ALTER TABLE service_operationlog ADD CONSTRAINT IF NOT EXISTS service_operationlog_user_id_5f5501ab_fk_service_customuser FOREIGN KEY (user_id) REFERENCES service_customuser (id);
             
-            -- 删除 Problem 表的外键约束
-            ALTER TABLE service_problem DROP FOREIGN KEY service_problem_handler_id_08715790_fk_auth_user_id;
+            -- 删除 Problem 表的外键约束（如果存在）
+            ALTER TABLE service_problem DROP FOREIGN KEY IF EXISTS service_problem_handler_id_08715790_fk_auth_user_id;
             -- 修改列类型
             ALTER TABLE service_problem MODIFY COLUMN handler_id BIGINT NULL;
             -- 重新创建外键约束，指向 service_customuser 表
-            ALTER TABLE service_problem ADD CONSTRAINT service_problem_handler_id_08715790_fk_service_customuser FOREIGN KEY (handler_id) REFERENCES service_customuser (id);
+            ALTER TABLE service_problem ADD CONSTRAINT IF NOT EXISTS service_problem_handler_id_08715790_fk_service_customuser FOREIGN KEY (handler_id) REFERENCES service_customuser (id);
             
-            -- 删除 Project 表的外键约束
-            ALTER TABLE service_project DROP FOREIGN KEY service_project_project_manager_id_8c02085c_fk_auth_user_id;
-            ALTER TABLE service_project DROP FOREIGN KEY service_project_technical_manager_id_3f60843c_fk_auth_user_id;
+            -- 删除 Project 表的外键约束（如果存在）
+            ALTER TABLE service_project DROP FOREIGN KEY IF EXISTS service_project_project_manager_id_8c02085c_fk_auth_user_id;
+            ALTER TABLE service_project DROP FOREIGN KEY IF EXISTS service_project_technical_manager_id_3f60843c_fk_auth_user_id;
             -- 修改列类型
             ALTER TABLE service_project MODIFY COLUMN project_manager_id BIGINT NULL;
             ALTER TABLE service_project MODIFY COLUMN technical_manager_id BIGINT NULL;
             -- 重新创建外键约束，指向 service_customuser 表
-            ALTER TABLE service_project ADD CONSTRAINT service_project_project_manager_id_8c02085c_fk_service_customuser FOREIGN KEY (project_manager_id) REFERENCES service_customuser (id);
-            ALTER TABLE service_project ADD CONSTRAINT service_project_technical_manager_id_3f60843c_fk_service_customuser FOREIGN KEY (technical_manager_id) REFERENCES service_customuser (id);
+            ALTER TABLE service_project ADD CONSTRAINT IF NOT EXISTS service_project_project_manager_id_8c02085c_fk_service_customuser FOREIGN KEY (project_manager_id) REFERENCES service_customuser (id);
+            ALTER TABLE service_project ADD CONSTRAINT IF NOT EXISTS service_project_technical_manager_id_3f60843c_fk_service_customuser FOREIGN KEY (technical_manager_id) REFERENCES service_customuser (id);
             
-            -- 删除 File 表的外键约束
-            ALTER TABLE service_file DROP FOREIGN KEY service_file_uploader_id_06a3b7a1_fk_auth_user_id;
+            -- 删除 File 表的外键约束（如果存在）
+            ALTER TABLE service_file DROP FOREIGN KEY IF EXISTS service_file_uploader_id_06a3b7a1_fk_auth_user_id;
             -- 修改列类型
             ALTER TABLE service_file MODIFY COLUMN uploader_id BIGINT NULL;
             -- 重新创建外键约束，指向 service_customuser 表
-            ALTER TABLE service_file ADD CONSTRAINT service_file_uploader_id_06a3b7a1_fk_service_customuser FOREIGN KEY (uploader_id) REFERENCES service_customuser (id);
-            '''
-        ),
+            ALTER TABLE service_file ADD CONSTRAINT IF NOT EXISTS service_file_uploader_id_06a3b7a1_fk_service_customuser FOREIGN KEY (uploader_id) REFERENCES service_customuser (id);
+            '''),
     ]
