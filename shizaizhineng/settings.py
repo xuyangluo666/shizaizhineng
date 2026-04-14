@@ -12,6 +12,10 @@ https://docs.djangoproject.com/en/6.0/ref/settings/
 
 from pathlib import Path
 import os
+from dotenv import load_dotenv
+
+# 加载.env文件中的环境变量
+load_dotenv()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -21,7 +25,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/6.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('SECRET_KEY', 'django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g')
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-^f9@*v7*h@exrj&#6wyrz)yc2(wpu81u0zjuf&*6*2%c12$@g')
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = os.environ.get('DEBUG', 'False').lower() in ('true', '1', 'yes')
@@ -195,11 +199,11 @@ LOGGING = {
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
-        'HOST': '47.121.141.81',
-        'USER': 'lxyuser',
-        'PASSWORD': 'Lxy1463240856!',
-        'NAME': 'shizaizhineng',
-        'PORT': '3306',
+        'HOST': os.environ.get('DB_HOST', 'localhost'),
+        'USER': os.environ.get('DB_USER', 'root'),
+        'PASSWORD': os.environ.get('DB_PASSWORD', ''),
+        'NAME': os.environ.get('DB_NAME', 'shizaizhineng'),
+        'PORT': os.environ.get('DB_PORT', '3306'),
         'OPTIONS': {
             'charset': 'utf8mb4',
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES', time_zone='+08:00'",
