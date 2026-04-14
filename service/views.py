@@ -65,6 +65,8 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
                 context['trial_info'] = TrialCustomer.objects.get(customer=customer)
             except TrialCustomer.DoesNotExist:
                 context['trial_info'] = None
+        # 添加用户列表，用于项目负责人和技术负责人选择
+        context['users'] = CustomUser.objects.all()
         return context
 
 class CustomerCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -177,6 +179,9 @@ class CustomerUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView
                         trial_end_time=trial_end_time,
                         conversion_status=conversion_status
                     )
+        # 检查是否是AJAX请求
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '客户信息更新成功'})
         return response
 
 class CustomerDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
