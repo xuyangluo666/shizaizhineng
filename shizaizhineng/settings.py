@@ -117,16 +117,16 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # Email configuration
-EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.qq.com'          # 邮件服务器
-EMAIL_PORT = 587                     # 端口（TLS）
-EMAIL_USE_TLS = True                 # 启用 TLS
-EMAIL_HOST_USER = '1463240856@qq.com'   # 发件邮箱
-EMAIL_HOST_PASSWORD = 'vkvkasrtmkvdhech'   # 邮箱授权码（非登录密码）
-DEFAULT_FROM_EMAIL = EMAIL_HOST_USER # 默认发件人
+EMAIL_BACKEND = os.environ.get('EMAIL_BACKEND', 'django.core.mail.backends.smtp.EmailBackend')
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.qq.com')          # 邮件服务器
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', '587'))                     # 端口（TLS）
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True').lower() in ('true', '1', 'yes')                 # 启用 TLS
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '1463240856@qq.com')   # 发件邮箱
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', 'vkvkasrtmkvdhech')   # 邮箱授权码（非登录密码）
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', EMAIL_HOST_USER) # 默认发件人
 
 # User activation settings
-ACCOUNT_ACTIVATION_DAYS = 7
+ACCOUNT_ACTIVATION_DAYS = int(os.environ.get('ACCOUNT_ACTIVATION_DAYS', '7'))
 
 # Custom user model
 AUTH_USER_MODEL = 'service.CustomUser'
