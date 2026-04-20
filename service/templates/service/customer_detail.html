@@ -26,7 +26,7 @@
             <div class="card mb-2" style="padding: 0;">
                 <div class="card-header" style="padding: 0.5rem 1rem; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
                     <span>基本信息</span>
-                    <button class="btn btn-sm btn-warning edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-opportunity-number="{{ customer.opportunity_number|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}" style="padding: 0.25rem 0.5rem;">
+                    <button class="btn btn-sm btn-warning edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-sales-person="{{ customer.sales_person.id|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}" style="padding: 0.25rem 0.5rem;">
                         编辑
                     </button>
                 </div>
@@ -43,6 +43,9 @@
                         </div>
                         <div class="col-md-12" style="padding: 0 0.5rem; margin-bottom: 0.75rem;">
                             <p style="margin: 0; font-size: 0.85rem;"><strong>负责人：</strong>{{ customer.contact_person }}</p>
+                        </div>
+                        <div class="col-md-12" style="padding: 0 0.5rem; margin-bottom: 0.75rem;">
+                            <p style="margin: 0; font-size: 0.85rem;"><strong>销售负责人：</strong>{{ customer.sales_person.username|default:'未分配' }}</p>
                         </div>
                         <div class="col-md-12" style="padding: 0 0.5rem; margin-bottom: 0.75rem;">
                             <p style="margin: 0; font-size: 0.85rem;"><strong>客户级别：</strong>
@@ -310,12 +313,17 @@
                         <input type="text" class="form-control" id="contactPerson" name="contact_person" required>
                     </div>
                     <div class="form-group">
-                        <label for="opportunityNumber">商机编号</label>
-                        <input type="text" class="form-control" id="opportunityNumber" name="opportunity_number">
+                        <label for="salesPerson">销售负责人</label>
+                        <select class="form-control" id="salesPerson" name="sales_person" style="height: auto;">
+                            <option value="">请选择</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
                     </div>
                     <div class="form-group">
                         <label for="customerLevel">客户级别</label>
-                        <select class="form-control" id="customerLevel" name="customer_level" style="height: 60px;">
+                        <select class="form-control" id="customerLevel" name="customer_level" style="height: auto;">
                             <option value="">请选择</option>
                             <option value="A">A</option>
                             <option value="B">B</option>
@@ -518,10 +526,10 @@
             var name = $(this).data('name');
             var status = $(this).data('status');
             var contactPerson = $(this).data('contact-person');
-            var opportunityNumber = $(this).data('opportunity-number');
+            var salesPerson = $(this).data('sales-person');
             var customerLevel = $(this).data('customer-level');
             
-            console.log('Customer data:', {id: id, customerId: customerId, name: name, status: status, contactPerson: contactPerson, opportunityNumber: opportunityNumber, customerLevel: customerLevel});
+            console.log('Customer data:', {id: id, customerId: customerId, name: name, status: status, contactPerson: contactPerson, salesPerson: salesPerson, customerLevel: customerLevel});
             
             // 填充模态框数据
             $('#customerId').val(id);
@@ -529,7 +537,7 @@
             $('#customerName').val(name);
             $('#customerStatus').val(status);
             $('#contactPerson').val(contactPerson);
-            $('#opportunityNumber').val(opportunityNumber);
+            $('#salesPerson').val(salesPerson);
             $('#customerLevel').val(customerLevel);
             
             // 显示模态框

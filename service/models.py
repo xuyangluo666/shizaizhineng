@@ -260,6 +260,14 @@ class Customer(models.Model):
         verbose_name='当前状态'
     )
     contact_person = models.CharField(max_length=100, verbose_name='负责人')
+    sales_person = models.ForeignKey(
+        CustomUser,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customer_sales',
+        verbose_name='销售负责人'
+    )
     customer_level = models.CharField(
         max_length=1,
         choices=CUSTOMER_LEVEL_CHOICES,
