@@ -26,7 +26,7 @@
             <div class="card mb-2" style="padding: 0;">
                 <div class="card-header" style="padding: 0.5rem 1rem; font-size: 0.9rem; display: flex; justify-content: space-between; align-items: center;">
                     <span>基本信息</span>
-                    <button class="btn btn-sm btn-warning edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-sales-person="{{ customer.sales_person.id|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}" style="padding: 0.25rem 0.5rem;">
+                    <button class="btn btn-sm btn-warning edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-sales-person="{{ customer.sales_person|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}" style="padding: 0.25rem 0.5rem;">
                         编辑
                     </button>
                 </div>
@@ -45,7 +45,7 @@
                             <p style="margin: 0; font-size: 0.85rem;"><strong>负责人：</strong>{{ customer.contact_person }}</p>
                         </div>
                         <div class="col-md-12" style="padding: 0 0.5rem; margin-bottom: 0.75rem;">
-                            <p style="margin: 0; font-size: 0.85rem;"><strong>销售负责人：</strong>{{ customer.sales_person.username|default:'未分配' }}</p>
+                            <p style="margin: 0; font-size: 0.85rem;"><strong>销售负责人：</strong>{{ customer.sales_person|default:'未分配' }}</p>
                         </div>
                         <div class="col-md-12" style="padding: 0 0.5rem; margin-bottom: 0.75rem;">
                             <p style="margin: 0; font-size: 0.85rem;"><strong>客户级别：</strong>
@@ -314,12 +314,7 @@
                     </div>
                     <div class="form-group">
                         <label for="salesPerson">销售负责人</label>
-                        <select class="form-control" id="salesPerson" name="sales_person" style="height: auto;">
-                            <option value="">请选择</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}">{{ user.username }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="text" class="form-control" id="salesPerson" name="sales_person" placeholder="请填写">
                     </div>
                     <div class="form-group">
                         <label for="customerLevel">客户级别</label>

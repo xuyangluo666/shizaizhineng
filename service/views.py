@@ -1460,7 +1460,7 @@ class CustomerExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 '客户类型': dict(CUSTOMER_TYPE_CHOICES).get(customer.customer_type, customer.customer_type),
                 '当前状态': dict(CUSTOMER_STATUS_CHOICES).get(customer.status, customer.status),
                 '负责人': customer.contact_person,
-                '销售负责人': customer.sales_person.username if customer.sales_person else '',
+                '销售负责人': customer.sales_person or '',
                 '客户级别': dict(CUSTOMER_LEVEL_CHOICES).get(customer.customer_level, customer.customer_level) or '',
                 '创建时间': customer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
                 '最近更新时间': customer.updated_at.strftime('%Y-%m-%d %H:%M:%S')

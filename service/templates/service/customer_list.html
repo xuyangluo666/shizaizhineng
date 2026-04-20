@@ -57,7 +57,7 @@
                 <td>{{ customer.get_customer_type_display }}</td>
                 <td>{% if customer.status == 'abnormal' %}<span style="color: red; animation: blink 1s infinite;">{{ customer.get_status_display }}</span>{% else %}{{ customer.get_status_display }}{% endif %}</td>
                 <td>{{ customer.contact_person }}</td>
-                <td>{{ customer.sales_person.username|default:'未分配' }}</td>
+                <td>{{ customer.sales_person|default:'未分配' }}</td>
                 <td>
                     {% if customer.customer_level == 'A' %}
                         <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
@@ -71,7 +71,7 @@
                 </td>
                 <td>{{ customer.updated_at|date:"Y-m-d H:i:s" }}</td>
                 <td>
-                    <button class="btn btn-sm btn-info edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-sales-person="{{ customer.sales_person.id|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}">编辑</button>
+                    <button class="btn btn-sm btn-info edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-sales-person="{{ customer.sales_person|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}">编辑</button>
                     <button class="btn btn-sm btn-danger delete-customer" data-id="{{ customer.id }}" data-name="{{ customer.name }}">删除</button>
                     {% if customer.customer_type != 'operations' %}
                     <button class="btn btn-sm btn-warning change-type-customer" data-id="{{ customer.id }}" data-name="{{ customer.name }}" data-type="{{ customer.customer_type }}">变更类型</button>
@@ -137,12 +137,7 @@
                     </div>
                     <div class="form-group">
                         <label for="salesPerson">销售负责人</label>
-                        <select class="form-control" id="salesPerson" name="sales_person" style="height: auto;">
-                            <option value="">请选择</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}">{{ user.username }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="text" class="form-control" id="salesPerson" name="sales_person" placeholder="请填写">
                     </div>
                     <div class="form-group">
                         <label for="customerLevel">客户级别</label>
@@ -203,12 +198,7 @@
                     </div>
                     <div class="form-group">
                         <label for="createSalesPerson">销售负责人</label>
-                        <select class="form-control" id="createSalesPerson" name="sales_person" style="height: auto;">
-                            <option value="">请选择</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}">{{ user.username }}</option>
-                            {% endfor %}
-                        </select>
+                        <input type="text" class="form-control" id="createSalesPerson" name="sales_person" placeholder="请填写">
                     </div>
                     <div class="form-group">
                         <label for="createCustomerLevel">客户级别</label>
