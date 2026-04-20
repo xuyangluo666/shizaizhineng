@@ -15,6 +15,7 @@ from django.utils.encoding import force_str
 from django.contrib.auth.tokens import default_token_generator
 from django.conf import settings
 from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 import pandas as pd
 import io
 import os
@@ -1231,7 +1232,7 @@ class ProcessListView(LoginRequiredMixin, ListView):
         context['users'] = CustomUser.objects.all()
         return context
 
-@csrf_exempt
+@method_decorator(csrf_exempt, name='dispatch')
 class ProcessCreateView(LoginRequiredMixin, CreateView):
     model = Process
     template_name = 'service/process_form.html'
