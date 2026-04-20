@@ -26,7 +26,7 @@
         </div>
         <div class="col-md-4 text-right">
             <a href="{% url 'service:customer_export' %}" class="btn btn-info mr-2">导出</a>
-            <a href="{% url 'service:customer_import' %}" class="btn btn-warning mr-2">导入</a>
+            <button type="button" class="btn btn-warning mr-2" data-toggle="modal" data-target="#importCustomerModal">导入</button>
             <button class="btn btn-danger mr-2" id="batchDeleteBtn" disabled>批量删除</button>
             <button type="button" class="btn btn-success" data-toggle="modal" data-target="#createCustomerModal">新增客户</button>
         </div>
@@ -311,6 +311,37 @@
     </div>
 </div>
 
+<!-- 导入客户模态框 -->
+<div class="modal fade" id="importCustomerModal" tabindex="-1" role="dialog" aria-labelledby="importCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="importCustomerModalLabel">导入客户</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="importCustomerForm" method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="customerFile">选择文件</label>
+                        <input type="file" class="form-control-file" id="customerFile" name="file" required>
+                        <small class="form-text text-muted">支持 .xlsx, .xls 或 .csv 格式</small>
+                    </div>
+                    <div class="form-group">
+                        <a href="{% url 'service:customer_import' %}?action=download_template" class="btn btn-info">下载导入模板</a>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">导入</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 
 
 {% endblock %}
@@ -568,6 +599,42 @@ $(function() {
             error: function(xhr) {
                 alert('类型变更失败，请重试');
                 console.log('Type change error:', xhr.responseText);
+            }
+        });
+    });
+    
+    // 导入客户表单提交事件
+    $('#importCustomerForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData(this);
+        
+        console.log('Importing customers...');
+        
+        $.ajax({
+            url: "{% url 'service:customer_import' %}",
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(response) {
+                console.log('Import successful:', response);
+                // 关闭模态框
+                $('#importCustomerModal').modal('hide');
+                
+                // 显示导入结果
+                if (response.success) {
+                    alert('导入成功！\n成功: ' + response.success_count + ' 条\n失败: ' + response.error_count + ' 条');
+                } else {
+                    alert('导入失败: ' + response.message);
+                }
+                
+                // 刷新页面
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('导入失败，请重试');
+                console.log('Import error:', xhr.responseText);
             }
         });
     });
