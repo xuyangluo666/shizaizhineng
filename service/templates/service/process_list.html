@@ -25,13 +25,35 @@
                 <td>{{ process.update_time|date:"Y-m-d H:i:s" }}</td>
                 <td>
                     <a href="{% url 'service:process_update' process.id %}" class="btn btn-sm btn-warning">编辑</a>
-                    <a href="{% url 'service:process_delete' process.id %}" class="btn btn-sm btn-danger">删除</a>
+                    <button class="btn btn-sm btn-danger delete-process" data-id="{{ process.id }}" data-name="{{ process.name }}">删除</button>
                 </td>
             </tr>
             {% endfor %}
         </tbody>
     </table>
     <a href="{% url 'service:customer_detail' project.customer.id %}" class="btn btn-secondary">返回客户详情</a>
+</div>
+
+<!-- 删除流程模态框 -->
+<div class="modal fade" id="deleteProcessModal" tabindex="-1" role="dialog" aria-labelledby="deleteProcessModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteProcessModalLabel">确认删除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除流程 <strong id="deleteProcessName"></strong> 吗？此操作不可撤销。</p>
+                <input type="hidden" id="deleteProcessId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteProcess">确认删除</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- 新增流程模态框 -->
@@ -137,6 +159,47 @@
                 error: function(xhr) {
                     alert('创建流程失败，请重试');
                     console.log('Process creation error:', xhr.responseText);
+                }
+            });
+        });
+        
+        // 删除流程按钮点击事件
+        $(document).on('click', '.delete-process', function() {
+            var processId = $(this).data('id');
+            var processName = $(this).data('name');
+            
+            // 填充模态框数据
+            $('#deleteProcessId').val(processId);
+            $('#deleteProcessName').text(processName);
+            
+            // 显示模态框
+            $('#deleteProcessModal').modal('show');
+        });
+        
+        // 确认删除按钮点击事件
+        $('#confirmDeleteProcess').click(function() {
+            var processId = $('#deleteProcessId').val();
+            var csrfToken = getCookie('csrftoken');
+            
+            $.ajax({
+                url: "{% url 'service:process_delete' 0 %}".replace('0', processId),
+                type: 'POST',
+                data: {
+                    'csrfmiddlewaretoken': csrfToken
+                },
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    // 关闭模态框
+                    $('#deleteProcessModal').modal('hide');
+                    
+                    // 刷新页面
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('删除流程失败，请重试');
+                    console.log('Process deletion error:', xhr.responseText);
                 }
             });
         });
