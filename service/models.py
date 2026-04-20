@@ -248,7 +248,7 @@ PROCESS_ENV_CHOICES = [
 class Customer(models.Model):
     """客户模型"""
     customer_id = models.CharField(max_length=50, unique=True, default='', verbose_name='客户id')
-    name = models.CharField(max_length=255, verbose_name='客户名称')
+    name = models.CharField(max_length=255, unique=True, verbose_name='客户名称')
     customer_type = models.CharField(
         max_length=20,
         choices=CUSTOMER_TYPE_CHOICES,
@@ -404,7 +404,7 @@ class Problem(models.Model):
         verbose_name='是否关单'
     )
     close_time = models.DateTimeField(null=True, blank=True, verbose_name='关单时间')
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    created_at = models.DateTimeField(auto_now_add=True, null=True, verbose_name='创建时间')
     
     class Meta:
         verbose_name = '问题记录'

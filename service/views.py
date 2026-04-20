@@ -1541,6 +1541,12 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                             errors.append(f'第{index+2}行: 客户ID已存在')
                             continue
                     
+                    # 检查客户名称是否已存在
+                    if Customer.objects.filter(name=name).exists():
+                        error_count += 1
+                        errors.append(f'第{index+2}行: 客户名称已存在')
+                        continue
+                    
                     # 创建客户
                     customer = Customer(
                         customer_id=customer_id,
