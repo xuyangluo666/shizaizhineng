@@ -688,11 +688,20 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                             return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
-                    try:
-                        df = pd.read_csv(file, encoding='utf-8-sig')
-                    except UnicodeDecodeError:
-                        file.seek(0)
-                        df = pd.read_csv(file, encoding='gbk')
+                    encodings = ['utf-8-sig', 'gbk', 'gb18030', 'utf-16']
+                    df = None
+                    
+                    for encoding in encodings:
+                        try:
+                            file.seek(0)  # 重置文件指针
+                            df = pd.read_csv(file, encoding=encoding)
+                            break  # 成功读取，跳出循环
+                        except Exception as e:
+                            continue  # 尝试下一个编码
+                    
+                    # 如果所有编码都失败，返回错误
+                    if df is None:
+                        return JsonResponse({'success': False, 'message': '读取CSV文件失败，无法识别编码格式。请确保文件格式正确且未损坏。'})
                 else:
                     return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
             except Exception as e:
@@ -1495,11 +1504,20 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                             return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
-                    try:
-                        df = pd.read_csv(file, encoding='utf-8-sig')
-                    except UnicodeDecodeError:
-                        file.seek(0)
-                        df = pd.read_csv(file, encoding='gbk')
+                    encodings = ['utf-8-sig', 'gbk', 'gb18030', 'utf-16']
+                    df = None
+                    
+                    for encoding in encodings:
+                        try:
+                            file.seek(0)  # 重置文件指针
+                            df = pd.read_csv(file, encoding=encoding)
+                            break  # 成功读取，跳出循环
+                        except Exception as e:
+                            continue  # 尝试下一个编码
+                    
+                    # 如果所有编码都失败，返回错误
+                    if df is None:
+                        return JsonResponse({'success': False, 'message': '读取CSV文件失败，无法识别编码格式。请确保文件格式正确且未损坏。'})
                 else:
                     return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
             except Exception as e:
