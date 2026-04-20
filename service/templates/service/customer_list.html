@@ -707,9 +707,17 @@ $(function() {
             url: `{% url 'service:problem_create' 0 %}`.replace('0', customerId),
             type: 'POST',
             data: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
             success: function(response) {
-                $('#quickCreateRecordModal').modal('hide');
-                alert('记录创建成功');
+                if (response.success) {
+                    $('#quickCreateRecordModal').modal('hide');
+                    alert('记录创建成功');
+                    location.reload();
+                } else {
+                    alert('创建失败：' + JSON.stringify(response.errors));
+                }
             },
             error: function(xhr) {
                 alert('创建失败，请重试');

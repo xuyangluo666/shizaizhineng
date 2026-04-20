@@ -439,7 +439,7 @@ class ProblemListView(LoginRequiredMixin, ListView):
 class ProblemCreateView(LoginRequiredMixin, CreateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'man_days', 'related_process', 'is_closed', 'close_time']
+    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'related_process', 'is_closed', 'close_time']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
@@ -447,6 +447,11 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
     def get_initial(self):
         initial = super().get_initial()
         return initial
+    
+    def form_invalid(self, form):
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+        return super().form_invalid(form)
     
     def form_valid(self, form):
         customer_id = self.kwargs.get('customer_id')
@@ -491,10 +496,15 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
 class ProblemUpdateView(LoginRequiredMixin, UpdateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'man_days', 'related_process', 'is_closed', 'close_time']
+    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'related_process', 'is_closed', 'close_time']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.object.customer.id})
+    
+    def form_invalid(self, form):
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
+        return super().form_invalid(form)
     
     def form_valid(self, form):
         response = super().form_valid(form)
