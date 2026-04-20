@@ -667,18 +667,25 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 # 检查是否为有效的Excel文件
                 if file_extension in ['xlsx', 'xls']:
                     # 尝试使用不同的引擎读取文件，以兼容不同格式的Excel文件
-                    try:
-                        # 首先尝试openpyxl引擎
-                        df = pd.read_excel(file, engine='openpyxl')
-                    except Exception:
-                        # 如果openpyxl失败，尝试使用xlrd引擎
-                        file.seek(0)
+                    engines = ['openpyxl', 'xlrd']
+                    df = None
+                    
+                    for engine in engines:
                         try:
-                            df = pd.read_excel(file, engine='xlrd')
-                        except Exception:
-                            # 如果xlrd也失败，尝试不指定引擎
+                            file.seek(0)  # 重置文件指针
+                            df = pd.read_excel(file, engine=engine)
+                            break  # 成功读取，跳出循环
+                        except Exception as e:
+                            continue  # 尝试下一个引擎
+                    
+                    # 如果所有引擎都失败，尝试使用默认引擎
+                    if df is None:
+                        try:
                             file.seek(0)
                             df = pd.read_excel(file)
+                        except Exception as e:
+                            # 所有尝试都失败，返回错误
+                            return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
                     try:
@@ -1467,18 +1474,25 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 # 检查是否为有效的Excel文件
                 if file_extension in ['xlsx', 'xls']:
                     # 尝试使用不同的引擎读取文件，以兼容不同格式的Excel文件
-                    try:
-                        # 首先尝试openpyxl引擎
-                        df = pd.read_excel(file, engine='openpyxl')
-                    except Exception:
-                        # 如果openpyxl失败，尝试使用xlrd引擎
-                        file.seek(0)
+                    engines = ['openpyxl', 'xlrd']
+                    df = None
+                    
+                    for engine in engines:
                         try:
-                            df = pd.read_excel(file, engine='xlrd')
-                        except Exception:
-                            # 如果xlrd也失败，尝试不指定引擎
+                            file.seek(0)  # 重置文件指针
+                            df = pd.read_excel(file, engine=engine)
+                            break  # 成功读取，跳出循环
+                        except Exception as e:
+                            continue  # 尝试下一个引擎
+                    
+                    # 如果所有引擎都失败，尝试使用默认引擎
+                    if df is None:
+                        try:
                             file.seek(0)
                             df = pd.read_excel(file)
+                        except Exception as e:
+                            # 所有尝试都失败，返回错误
+                            return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
                     try:
