@@ -33,7 +33,7 @@
                     <ul class="list-group">
                         {% for item in problem_status_distribution %}
                         <li class="list-group-item">
-                            {% if item.status == 'pending' %}待处理{% elif item.status == 'processing' %}处理中{% elif item.status == 'completed' %}已完成{% endif %}: {{ item.count }}个
+                            {% if item.is_closed %}已关单{% else %}未关单{% endif %}: {{ item.count }}个
                         </li>
                         {% endfor %}
                     </ul>

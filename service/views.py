@@ -1295,7 +1295,7 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
         customer_type_distribution = Customer.objects.values('customer_type').annotate(count=Count('id'))
         
         # 问题状态分布
-        problem_status_distribution = Problem.objects.values('status').annotate(count=Count('id'))
+        problem_status_distribution = Problem.objects.values('is_closed').annotate(count=Count('id'))
         
         # 运维项目统计
         project_count = Project.objects.count()
@@ -1303,8 +1303,8 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
         
         # 问题趋势（最近30天）
         start_date = timezone.now() - timezone.timedelta(days=30)
-        problem_trend = Problem.objects.filter(occurrence_time__gte=start_date)\
-            .extra(select={'date': 'DATE(occurrence_time)'})\
+        problem_trend = Problem.objects.filter(created_at__gte=start_date)\
+            .extra(select={'date': 'DATE(created_at)'})\
             .values('date')\
             .annotate(count=Count('id'))\
             .order_by('date')
