@@ -18,26 +18,30 @@
             min-height: 100vh;
             margin: 0;
             padding: 0;
+            font-size: 14px;
+            line-height: 1.5;
         }
         
         /* 导航栏样式 */
         .navbar {
             background: rgba(255, 255, 255, 0.95) !important;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-            padding: 0.8rem 1rem;
+            padding: 0.5rem 1rem;
         }
         
         .navbar-brand {
             color: #667eea !important;
             font-weight: 700;
-            font-size: 1.25rem;
+            font-size: 1rem;
         }
         
         .nav-link {
             color: #333 !important;
             font-weight: 500;
-            margin-right: 1rem;
+            margin-right: 0.5rem;
             transition: all 0.3s ease;
+            font-size: 0.9rem;
+            padding: 0.5rem 0.75rem;
         }
         
         .nav-link:hover {
@@ -45,13 +49,17 @@
             transform: translateY(-2px);
         }
         
+        .nav-link i {
+            font-size: 0.85rem;
+        }
+        
         /* 主要内容容器 */
         .content-container {
             background: rgba(255, 255, 255, 0.95);
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            padding: 1.5rem;
-            margin-top: 1rem;
+            padding: 1rem;
+            margin-top: 0.75rem;
             margin-bottom: 15px;
             min-height: calc(100vh - 100px);
         }
@@ -59,8 +67,8 @@
         /* 容器宽度调整 */
         .container {
             max-width: 100%;
-            padding-left: 1.5rem;
-            padding-right: 1.5rem;
+            padding-left: 1rem;
+            padding-right: 1rem;
         }
         
         @media (min-width: 1200px) {
@@ -82,12 +90,27 @@
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
         }
         
+        .card-body {
+            padding: 1rem;
+        }
+        
+        .card-header {
+            padding: 0.75rem 1rem;
+            font-size: 0.95rem;
+        }
+        
         /* 按钮样式 */
         .btn {
             border-radius: 50px;
-            padding: 0.5rem 1.5rem;
+            padding: 0.4rem 1rem;
             font-weight: 500;
             transition: all 0.3s ease;
+            font-size: 0.85rem;
+        }
+        
+        .btn-sm {
+            padding: 0.25rem 0.75rem;
+            font-size: 0.8rem;
         }
         
         .btn-primary {
@@ -104,8 +127,9 @@
         .form-control {
             border-radius: 8px;
             border: 1px solid #e0e0e0;
-            padding: 0.75rem;
+            padding: 0.5rem 0.75rem;
             transition: all 0.3s ease;
+            font-size: 0.9rem;
         }
         
         .form-control:focus {
@@ -113,11 +137,17 @@
             box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
         }
         
+        select.form-control {
+            height: auto;
+            padding: 0.5rem 0.75rem;
+        }
+        
         /* 表格样式 */
         .table {
             border-radius: 10px;
             overflow: hidden;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+            font-size: 0.85rem;
         }
         
         .table thead {
@@ -125,12 +155,171 @@
             color: white;
         }
         
+        .table th,
+        .table td {
+            padding: 0.5rem;
+            vertical-align: middle;
+        }
+        
+        /* 模态框优化 */
+        .modal-body {
+            padding: 1rem;
+        }
+        
+        .modal-header {
+            padding: 0.75rem 1rem;
+        }
+        
+        .modal-footer {
+            padding: 0.75rem 1rem;
+        }
+        
+        .modal-title {
+            font-size: 1rem;
+        }
+        
+        /* 表单标签 */
+        .form-group {
+            margin-bottom: 0.75rem;
+        }
+        
+        .form-group label {
+            font-size: 0.85rem;
+            margin-bottom: 0.25rem;
+        }
+        
+        /* h标签优化 */
+        h1, h2, h3, h4, h5, h6 {
+            margin-top: 0;
+            margin-bottom: 0.5rem;
+        }
+        
+        h1 { font-size: 1.5rem; }
+        h2 { font-size: 1.25rem; }
+        h3 { font-size: 1.1rem; }
+        h4 { font-size: 1rem; }
+        h5 { font-size: 0.95rem; }
+        h6 { font-size: 0.9rem; }
+        
+        /* 分页优化 */
+        .pagination {
+            margin: 0.5rem 0;
+        }
+        
+        .pagination li a,
+        .pagination li span {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.85rem;
+        }
+        
+        /* 列表组优化 */
+        .list-group-item {
+            padding: 0.5rem 0.75rem;
+            font-size: 0.85rem;
+        }
+        
+        /* 图表容器优化 */
+        .chart-container {
+            position: relative;
+            height: 250px;
+        }
+        
         /* 响应式调整 */
         @media (max-width: 768px) {
             .content-container {
-                padding: 1.5rem;
-                margin-top: 1.5rem;
+                padding: 1rem;
+                margin-top: 1rem;
             }
+            
+            body {
+                font-size: 13px;
+            }
+            
+            .nav-link {
+                font-size: 0.85rem;
+                padding: 0.4rem 0.5rem;
+            }
+        }
+        
+        /* 笔记本屏幕优化 (1366px - 1600px) */
+        @media (min-width: 1366px) and (max-width: 1600px) {
+            body {
+                font-size: 13px;
+            }
+            
+            .content-container {
+                padding: 0.75rem;
+            }
+            
+            .card-body {
+                padding: 0.75rem;
+            }
+            
+            .navbar-brand {
+                font-size: 0.95rem;
+            }
+            
+            .nav-link {
+                font-size: 0.85rem;
+                margin-right: 0.3rem;
+            }
+            
+            h1 { font-size: 1.25rem; }
+            h2 { font-size: 1.1rem; }
+            h3 { font-size: 1rem; }
+        }
+        
+        /* 小屏幕笔记本优化 (1280px - 1366px) */
+        @media (min-width: 1280px) and (max-width: 1366px) {
+            body {
+                font-size: 12px;
+            }
+            
+            .content-container {
+                padding: 0.5rem;
+            }
+            
+            .card-body {
+                padding: 0.5rem;
+            }
+            
+            .navbar {
+                padding: 0.4rem 0.75rem;
+            }
+            
+            .navbar-brand {
+                font-size: 0.9rem;
+            }
+            
+            .nav-link {
+                font-size: 0.8rem;
+                margin-right: 0.2rem;
+                padding: 0.4rem 0.5rem;
+            }
+            
+            .btn {
+                padding: 0.3rem 0.8rem;
+                font-size: 0.8rem;
+            }
+            
+            .btn-sm {
+                padding: 0.2rem 0.5rem;
+                font-size: 0.75rem;
+            }
+            
+            .form-control {
+                padding: 0.4rem 0.5rem;
+                font-size: 0.8rem;
+            }
+            
+            .table th,
+            .table td {
+                padding: 0.4rem;
+            }
+            
+            h1 { font-size: 1.1rem; }
+            h2 { font-size: 1rem; }
+            h3 { font-size: 0.95rem; }
         }
         
         /* 闪烁动画 */
@@ -227,7 +416,7 @@
                     <div class="modal-body">
                         <div class="form-group">
                             <label for="quickRecordCustomerSelect">选择客户</label>
-                            <select class="form-control" id="quickRecordCustomerSelect" name="customer_id" required style="height: 60px">
+                            <select class="form-control" id="quickRecordCustomerSelect" name="customer_id" required>
                                 <option value="">请选择</option>
                                 {% for customer in customers %}
                                 <option value="{{ customer.id }}" data-type="{{ customer.customer_type }}">{{ customer.name }} ({{ customer.get_customer_type_display }})</option>
@@ -240,7 +429,7 @@
                         </div>
                         <div class="form-group">
                             <label for="quickRecordOpportunity">商机编号</label>
-                            <select class="form-control" id="quickRecordOpportunity" name="opportunity" required style="height: 60px">
+                            <select class="form-control" id="quickRecordOpportunity" name="opportunity" required>
                                 <option value="">请选择</option>
                             </select>
                         </div>
@@ -250,7 +439,7 @@
                         </div>
                         <div class="form-group">
                             <label for="quickRecordType">问题类型</label>
-                            <select class="form-control" id="quickRecordType" name="problem_type" required style="height: 60px">
+                            <select class="form-control" id="quickRecordType" name="problem_type" required>
                                 <option value="process">流程问题</option>
                                 <option value="software">软件问题</option>
                                 <option value="install">安装部署</option>
@@ -259,7 +448,7 @@
                         </div>
                         <div class="form-group">
                             <label for="quickRecordServiceMode">服务模式</label>
-                            <select class="form-control" id="quickRecordServiceMode" name="service_mode" required style="height: 60px">
+                            <select class="form-control" id="quickRecordServiceMode" name="service_mode" required>
                                 <option value="remote">远程</option>
                                 <option value="onsite">现场</option>
                             </select>
@@ -270,7 +459,7 @@
                         </div>
                         <div class="form-group">
                             <label for="quickRecordHandler">处理人</label>
-                            <select class="form-control" id="quickRecordHandler" name="handler" style="height: 60px">
+                            <select class="form-control" id="quickRecordHandler" name="handler">
                                 <option value="">请选择</option>
                                 {% for user in users %}
                                 <option value="{{ user.id }}">{{ user.username }}</option>
@@ -279,13 +468,13 @@
                         </div>
                         <div class="form-group" id="quickRecordProcessContainer" style="display: none;">
                             <label for="quickRecordRelatedProcess">关联流程</label>
-                            <select class="form-control" id="quickRecordRelatedProcess" name="related_process" style="height: 60px">
+                            <select class="form-control" id="quickRecordRelatedProcess" name="related_process">
                                 <option value="">请选择</option>
                             </select>
                         </div>
                         <div class="form-group">
                             <label for="quickRecordIsClosed">是否关单</label>
-                            <select class="form-control" id="quickRecordIsClosed" name="is_closed" required style="height: 60px">
+                            <select class="form-control" id="quickRecordIsClosed" name="is_closed" required>
                                 <option value="no">否</option>
                                 <option value="yes">是</option>
                             </select>
@@ -305,11 +494,6 @@
     </div>
 
     <script>
-    // 设置默认缩放为100%
-    window.onload = function() {
-        document.body.style.zoom = '100%';
-    };
-    
     // 记录快捷新增相关脚本
     $(function() {
         // 记录快捷新增 - 客户选择事件
