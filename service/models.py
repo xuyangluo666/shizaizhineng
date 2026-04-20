@@ -237,10 +237,12 @@ PROCESS_STATUS_CHOICES = [
 ]
 
 # 流程部署环境常量
+PROCESS_ENV_DEV = 'dev'
 PROCESS_ENV_TEST = 'test'
 PROCESS_ENV_PROD = 'prod'
 
 PROCESS_ENV_CHOICES = [
+    (PROCESS_ENV_DEV, '开发'),
     (PROCESS_ENV_TEST, '测试'),
     (PROCESS_ENV_PROD, '生产'),
 ]
