@@ -42,9 +42,21 @@ urlpatterns = [
     path('processes/<int:pk>/delete/', views.ProcessDeleteView.as_view(), name='process_delete'),
     # 获取客户流程
     path('customers/<int:customer_id>/processes/', views.CustomerProcessesView.as_view(), name='customer_processes'),
+    path('customers/<int:customer_id>/opportunities/', views.CustomerOpportunitiesView.as_view(), name='customer_opportunities'),
     
     # 数据看板
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),
+    
+    # 商机编号管理 API
+    path('api/opportunities/add/', views.add_opportunity, name='add_opportunity'),
+    path('api/opportunities/edit/', views.edit_opportunity, name='edit_opportunity'),
+    path('api/opportunities/<int:opp_id>/delete/', views.delete_opportunity, name='delete_opportunity'),
+    path('api/opportunities/<int:opp_id>/status/', views.update_opportunity_status, name='update_opportunity_status'),
+    path('api/opportunities/customer/<int:customer_id>/', views.get_opportunities, name='get_opportunities'),
+    
+    # 商机编号管理视图
+    path('opportunities/', views.OpportunityListView.as_view(), name='opportunity_list'),
+    path('opportunities/export/', views.OpportunityExportView.as_view(), name='opportunity_export'),
     
     # 认证相关
     path('register/', views.RegisterView.as_view(), name='register'),

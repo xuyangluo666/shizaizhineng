@@ -50,10 +50,10 @@
             background: rgba(255, 255, 255, 0.95);
             border-radius: 10px;
             box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
-            padding: 2rem;
-            margin-top: 2rem;
-            margin-bottom: 2rem;
-            min-height: calc(100vh - 120px);
+            padding: 1.5rem;
+            margin-top: 1rem;
+            margin-bottom: 15px;
+            min-height: calc(100vh - 100px);
         }
         
         /* 容器宽度调整 */
@@ -239,6 +239,12 @@
                             <input type="text" class="form-control" id="quickRecordCustomerType" readonly>
                         </div>
                         <div class="form-group">
+                            <label for="quickRecordOpportunity">商机编号</label>
+                            <select class="form-control" id="quickRecordOpportunity" name="opportunity" required style="height: 60px">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
                             <label for="quickRecordTitle">记录标题</label>
                             <input type="text" class="form-control" id="quickRecordTitle" name="title" required>
                         </div>
@@ -299,9 +305,9 @@
     </div>
 
     <script>
-    // 设置默认缩放为75%
+    // 设置默认缩放为100%
     window.onload = function() {
-        document.body.style.zoom = '75%';
+        document.body.style.zoom = '100%';
     };
     
     // 记录快捷新增相关脚本
@@ -316,10 +322,30 @@
             }
             $('#quickRecordCustomerType').val(customerTypeName || '');
             
+            // 加载客户的商机编号
+            var customerId = $(this).val();
+            if (customerId) {
+                $.ajax({
+                    url: `/service/customers/${customerId}/opportunities/`,
+                    type: 'GET',
+                    success: function(response) {
+                        $('#quickRecordOpportunity').empty();
+                        $('#quickRecordOpportunity').append('<option value="">请选择</option>');
+                        if (response.opportunities) {
+                            $.each(response.opportunities, function(index, opportunity) {
+                                $('#quickRecordOpportunity').append(`<option value="${opportunity.id}">${opportunity.opportunity_number}</option>`);
+                            });
+                        }
+                    }
+                });
+            } else {
+                $('#quickRecordOpportunity').empty();
+                $('#quickRecordOpportunity').append('<option value="">请选择</option>');
+            }
+
             // 对于运维客户，显示关联流程选择
             if (customerType === 'operations') {
                 $('#quickRecordProcessContainer').show();
-                var customerId = $(this).val();
                 // 加载关联流程
                 $.ajax({
                     url: `/service/customers/${customerId}/processes/`,

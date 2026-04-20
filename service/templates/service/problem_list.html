@@ -4,6 +4,12 @@
 <div class="container">
     <h1>{{ customer.name }} - {% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</h1>
     <form method="get" class="form-inline mb-3">
+        <select name="opportunity" class="form-control mr-2" style="height: 60px; min-width: 150px;">
+            <option value="">全部商机</option>
+            {% for opportunity in opportunities %}
+            <option value="{{ opportunity.id }}" {% if request.GET.opportunity == opportunity.id|stringformat:'s' %}selected{% endif %}>{{ opportunity.opportunity_number }}</option>
+            {% endfor %}
+        </select>
         <select name="is_closed" class="form-control mr-2" style="height: 60px; min-width: 120px;">
             <option value="">全部状态</option>
             <option value="yes" {% if request.GET.is_closed == 'yes' %}selected{% endif %}>已关单</option>
@@ -35,6 +41,7 @@
             <thead>
                 <tr>
                     <th><input type="checkbox" id="select-all"></th>
+                    <th>商机编号</th>
                     <th>{% if customer.customer_type == 'operations' %}运维标题{% else %}问题标题{% endif %}</th>
                     <th>问题描述</th>
                     <th>问题类型</th>
@@ -42,7 +49,7 @@
                     <th>处理人</th>
                     {% if customer.customer_type == 'operations' %}
                     <th>关联流程</th>
-    
+
                     {% endif %}
                     <th>是否关单</th>
                     <th>关单时间</th>
@@ -54,6 +61,7 @@
                 {% for problem in problems %}
                 <tr>
                     <td><input type="checkbox" name="problem_ids" value="{{ problem.id }}"></td>
+                    <td>{{ problem.opportunity.opportunity_number|default:"无" }}</td>
                     <td>{{ problem.title }}</td>
                     <td>
                         <div class="text-truncate position-relative" style="max-width: 150px; height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
@@ -72,11 +80,11 @@
 
                     {% endif %}
                     <td>{{ problem.get_is_closed_display }}</td>
-                    <td>{{ problem.close_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
+                    <td>{{ problem.close_time|date:"Y-m-d H:i"|default:"无" }}</td>
                     <td>{{ problem.created_at|date:"Y-m-d H:i:s"|default:"无" }}</td>
                     <td>
-                        <a href="{% url 'service:problem_update' problem.id %}" class="btn btn-sm btn-warning">编辑</a>
-                        <a href="{% url 'service:problem_delete' problem.id %}" class="btn btn-sm btn-danger">删除</a>
+                        <button class="btn btn-sm btn-warning edit-problem-btn" data-id="{{ problem.id }}" data-opportunity="{{ problem.opportunity.id }}" data-title="{{ problem.title }}" data-description="{{ problem.description }}" data-problem-type="{{ problem.problem_type }}" data-service-mode="{{ problem.service_mode }}" data-handler="{{ problem.handler.id|default:'' }}" data-related-process="{{ problem.related_process.id|default:'' }}" data-is-closed="{{ problem.is_closed }}" data-close-time="{{ problem.close_time|date:'Y-m-d\\TH:i'|default:'' }}">编辑</button>
+                        <button class="btn btn-sm btn-danger delete-problem-btn" data-id="{{ problem.id }}" data-title="{{ problem.title }}">删除</button>
                     </td>
                 </tr>
                 {% endfor %}
@@ -86,8 +94,8 @@
     <div class="pagination">
         <span class="step-links">
             {% if page_obj.has_previous %}
-                <a href="?page=1{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">第一页</a>
-                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">上一页</a>
+                <a href="?page=1{% if request.GET.opportunity %}&opportunity={{ request.GET.opportunity }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">第一页</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.opportunity %}&opportunity={{ request.GET.opportunity }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">上一页</a>
             {% endif %}
             
             <span class="current">
@@ -95,8 +103,8 @@
             </span>
             
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">下一页</a>
-                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">最后一页</a>
+                <a href="?page={{ page_obj.next_page_number }}{% if request.GET.opportunity %}&opportunity={{ request.GET.opportunity }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.opportunity %}&opportunity={{ request.GET.opportunity }}{% endif %}{% if request.GET.status %}&status={{ request.GET.status }}{% endif %}{% if request.GET.submitter %}&submitter={{ request.GET.submitter }}{% endif %}{% if request.GET.start_date %}&start_date={{ request.GET.start_date }}{% endif %}{% if request.GET.end_date %}&end_date={{ request.GET.end_date }}{% endif %}{% if request.GET.related_process %}&related_process={{ request.GET.related_process }}{% endif %}">最后一页</a>
             {% endif %}
         </span>
     </div>
@@ -114,6 +122,15 @@
             <form id="createProblemForm" method="post">
                 {% csrf_token %}
                 <div class="modal-body">
+                    <div class="form-group">
+                        <label for="createOpportunity">商机编号</label>
+                        <select class="form-control" id="createOpportunity" name="opportunity" required style="height: 60px">
+                            <option value="">请选择</option>
+                            {% for opportunity in opportunities %}
+                            <option value="{{ opportunity.id }}">{{ opportunity.opportunity_number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
                     <div class="form-group">
                         <label for="createProblemTitle">{% if customer.customer_type == 'operations' %}运维标题{% else %}问题标题{% endif %}</label>
                         <input type="text" class="form-control" id="createProblemTitle" name="title" required>
@@ -170,7 +187,7 @@
                     </div>
                     <div class="form-group">
                         <label for="createCloseTime">关单时间</label>
-                        <input type="datetime-local" class="form-control" id="createCloseTime" name="close_time">
+                        <input type="datetime-local" class="form-control" id="createCloseTime" name="close_time" step="60">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -178,6 +195,119 @@
                     <button type="submit" class="btn btn-primary">保存</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- 编辑问题记录模态窗 -->
+<div class="modal fade" id="editProblemModal" tabindex="-1" role="dialog" aria-labelledby="editProblemModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProblemModalLabel">编辑{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editProblemForm" method="post">
+                {% csrf_token %}
+                <input type="hidden" id="editProblemId" name="id">
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="editOpportunity">商机编号</label>
+                        <select class="form-control" id="editOpportunity" name="opportunity" required style="height: 60px">
+                            <option value="">请选择</option>
+                            {% for opportunity in opportunities %}
+                            <option value="{{ opportunity.id }}">{{ opportunity.opportunity_number }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editProblemTitle">{% if customer.customer_type == 'operations' %}运维标题{% else %}问题标题{% endif %}</label>
+                        <input type="text" class="form-control" id="editProblemTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editProblemDescription">问题描述</label>
+                        <textarea class="form-control" id="editProblemDescription" name="description" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="editProblemType">问题类型</label>
+                        <select class="form-control" id="editProblemType" name="problem_type" required style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="process">流程问题</option>
+                            <option value="software">软件问题</option>
+                            <option value="install">安装部署</option>
+                            <option value="complaint">投诉</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editServiceMode">服务模式</label>
+                        <select class="form-control" id="editServiceMode" name="service_mode" required style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="remote">远程</option>
+                            <option value="onsite">现场</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editHandler">处理人</label>
+                        <select class="form-control" id="editHandler" name="handler" required style="height: 60px">
+                            <option value="">请选择</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if customer.customer_type == 'operations' %}
+
+                    <div class="form-group">
+                        <label for="editRelatedProcess">流程名称</label>
+                        <select class="form-control" id="editRelatedProcess" name="related_process" style="height: 60px">
+                            <option value="">请选择</option>
+                            {% for process in processes %}
+                            <option value="{{ process.id }}">{{ process.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="editIsClosed">是否关单</label>
+                        <select class="form-control" id="editIsClosed" name="is_closed" required style="height: 60px">
+                            <option value="no">否</option>
+                            <option value="yes">是</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editCloseTime">关单时间</label>
+                        <input type="datetime-local" class="form-control" id="editCloseTime" name="close_time" step="60">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- 删除问题记录模态窗 -->
+<div class="modal fade" id="deleteProblemModal" tabindex="-1" role="dialog" aria-labelledby="deleteProblemModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="deleteProblemModalLabel">确认删除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除问题记录 <strong id="deleteProblemTitle"></strong> 吗？此操作不可撤销。</p>
+                <input type="hidden" id="deleteProblemId">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+            </div>
         </div>
     </div>
 </div>
@@ -212,8 +342,70 @@ $(function() {
         
         var message = selectedCount === 1 ? '确定要删除1个问题吗？' : `确定要删除${selectedCount}个问题吗？`;
         if (confirm(message)) {
-            $('#batch-delete-form').submit();
+            var formData = $('#batch-delete-form').serialize();
+            
+            $.ajax({
+                url: "{% url 'service:problem_batch_delete' %}",
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    if (response.success) {
+                        alert(response.message);
+                        // 刷新页面
+                        location.reload();
+                    } else {
+                        alert(response.message);
+                    }
+                },
+                error: function(xhr) {
+                    alert('删除失败，请重试');
+                    console.log('Delete error:', xhr.responseText);
+                }
+            });
         }
+    });
+    
+    // 删除问题记录按钮点击事件
+    $('.delete-problem-btn').click(function(e) {
+        e.preventDefault();
+        var problemId = $(this).data('id');
+        var problemTitle = $(this).data('title');
+        
+        // 填充模态窗数据
+        $('#deleteProblemId').val(problemId);
+        $('#deleteProblemTitle').text(problemTitle);
+        
+        // 显示模态窗
+        $('#deleteProblemModal').modal('show');
+    });
+    
+    // 确认删除按钮点击事件
+    $('#confirmDelete').click(function() {
+        var problemId = $('#deleteProblemId').val();
+        
+        // 发送AJAX请求删除问题记录
+        $.ajax({
+            url: "{% url 'service:problem_delete' 0 %}".replace('0', problemId),
+            type: 'POST',
+            data: {
+                'csrfmiddlewaretoken': $('input[name="csrfmiddlewaretoken"]').val()
+            },
+            success: function(response) {
+                if (response.success) {
+                    alert(response.message);
+                    // 关闭模态窗
+                    $('#deleteProblemModal').modal('hide');
+                    // 刷新页面
+                    location.reload();
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                alert('删除失败，请重试');
+                console.log('Delete error:', xhr.responseText);
+            }
+        });
     });
     
     // 新增问题记录表单提交事件
@@ -256,8 +448,7 @@ $(function() {
             var day = String(now.getDate()).padStart(2, '0');
             var hours = String(now.getHours()).padStart(2, '0');
             var minutes = String(now.getMinutes()).padStart(2, '0');
-            var seconds = String(now.getSeconds()).padStart(2, '0');
-            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
             closeTimeField.val(formattedDateTime);
             closeTimeField.prop('disabled', false);
         } else {
@@ -280,8 +471,7 @@ $(function() {
             var day = String(now.getDate()).padStart(2, '0');
             var hours = String(now.getHours()).padStart(2, '0');
             var minutes = String(now.getMinutes()).padStart(2, '0');
-            var seconds = String(now.getSeconds()).padStart(2, '0');
-            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
             closeTimeField.val(formattedDateTime);
             closeTimeField.prop('disabled', false);
         } else {
@@ -294,6 +484,94 @@ $(function() {
     // 当模态窗显示时初始化
     $('#createProblemModal').on('show.bs.modal', function() {
         initCreateProblemModal();
+    });
+
+    // 编辑问题记录按钮点击事件
+    $('.edit-problem-btn').click(function(e) {
+        e.preventDefault();
+        var id = $(this).data('id');
+        var opportunity = $(this).data('opportunity');
+        var title = $(this).data('title');
+        var description = $(this).data('description');
+        var problemType = $(this).data('problem-type');
+        var serviceMode = $(this).data('service-mode');
+        var handler = $(this).data('handler');
+        var relatedProcess = $(this).data('related-process');
+        var isClosed = $(this).data('is-closed');
+        var closeTime = $(this).data('close-time');
+
+        // 填充表单数据
+        $('#editProblemId').val(id);
+        $('#editOpportunity').val(opportunity);
+        $('#editProblemTitle').val(title);
+        $('#editProblemDescription').val(description);
+        $('#editProblemType').val(problemType);
+        $('#editServiceMode').val(serviceMode);
+        $('#editHandler').val(handler);
+        $('#editRelatedProcess').val(relatedProcess);
+        $('#editIsClosed').val(isClosed);
+        $('#editCloseTime').val(closeTime);
+
+        // 处理关单时间字段
+        if (isClosed === 'yes') {
+            $('#editCloseTime').prop('disabled', false);
+        } else {
+            $('#editCloseTime').prop('disabled', true);
+        }
+
+        // 显示模态窗
+        $('#editProblemModal').modal('show');
+    });
+
+    // 编辑问题记录表单提交事件
+    $('#editProblemForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = $(this).serialize();
+        var id = $('#editProblemId').val();
+        
+        console.log('Updating problem...');
+        
+        $.ajax({
+            url: "{% url 'service:problem_update' 0 %}".replace('0', id),
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                console.log('Update successful');
+                // 关闭模态窗
+                $('#editProblemModal').modal('hide');
+                
+                // 刷新页面
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('更新失败，请重试');
+                console.log('Update error:', xhr.responseText);
+            }
+        });
+    });
+
+    // 编辑问题记录模态窗中的是否关单字段处理
+    $('#editIsClosed').change(function() {
+        var isClosed = $(this).val();
+        var closeTimeField = $('#editCloseTime');
+        
+        if (isClosed === 'yes') {
+            // 如果是关单，自动填充当前时间
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var day = String(now.getDate()).padStart(2, '0');
+            var hours = String(now.getHours()).padStart(2, '0');
+            var minutes = String(now.getMinutes()).padStart(2, '0');
+            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}`;
+            closeTimeField.val(formattedDateTime);
+            closeTimeField.prop('disabled', false);
+        } else {
+            // 如果不是关单，清空关单时间并禁用
+            closeTimeField.val('');
+            closeTimeField.prop('disabled', true);
+        }
     });
 });
 </script>

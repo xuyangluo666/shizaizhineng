@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .models import (
     CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
-    Project, File, Process, OperationLog
+    Project, File, Process, OperationLog, Opportunity
 )
 
 @admin.register(Customer)
@@ -57,3 +57,11 @@ class CustomUserAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'is_staff', 'is_superuser')
     search_fields = ('username', 'email')
     ordering = ('-date_joined',)
+
+@admin.register(Opportunity)
+class OpportunityAdmin(admin.ModelAdmin):
+    list_display = ('opportunity_number', 'customer', 'status', 'created_at', 'updated_at')
+    list_filter = ('status', 'customer', 'created_at')
+    search_fields = ('opportunity_number', 'customer__name')
+    ordering = ('-created_at',)
+

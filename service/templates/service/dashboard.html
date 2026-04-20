@@ -4,7 +4,47 @@
 <div class="container">
     <h1>数据看板</h1>
     
-    <div class="row">
+    <!-- 引入Chart.js库 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- 概览统计卡片 -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">总客户数</h5>
+                    <p class="card-text display-4">{{ customers|length }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">总项目数</h5>
+                    <p class="card-text display-4">{{ project_count }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">进行中项目</h5>
+                    <p class="card-text display-4">{{ active_projects }}</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body">
+                    <h5 class="card-title">商机编号数</h5>
+                    <p class="card-text display-4">{{ opportunity_count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 图表区域 -->
+    <div class="row mb-4">
         <!-- 客户类型分布 -->
         <div class="col-md-6 mb-4">
             <div class="card">
@@ -12,17 +52,29 @@
                     客户类型分布
                 </div>
                 <div class="card-body">
-                    <ul class="list-group">
-                        {% for item in customer_type_distribution %}
-                        <li class="list-group-item">
-                            {% if item.customer_type == 'trial' %}试用客户{% elif item.customer_type == 'self_develop' %}自开发客户{% elif item.customer_type == 'operations' %}售后运维客户{% endif %}: {{ item.count }}个
-                        </li>
-                        {% endfor %}
-                    </ul>
+                    <div style="height: 300px;">
+                        <canvas id="customerTypeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
         
+        <!-- 客户状态分布 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    客户状态分布
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="customerStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
         <!-- 问题状态分布 -->
         <div class="col-md-6 mb-4">
             <div class="card">
@@ -30,49 +82,358 @@
                     问题状态分布
                 </div>
                 <div class="card-body">
-                    <ul class="list-group">
-                        {% for item in problem_status_distribution %}
-                        <li class="list-group-item">
-                            {% if item.is_closed %}已关单{% else %}未关单{% endif %}: {{ item.count }}个
-                        </li>
-                        {% endfor %}
-                    </ul>
+                    <div style="height: 300px;">
+                        <canvas id="problemStatusChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 问题类型分布 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    问题类型分布
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="problemTypeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
     
-    <div class="row">
-        <!-- 运维项目统计 -->
+    <div class="row mb-4">
+        <!-- 服务模式分布 -->
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
-                    运维项目统计
+                    服务模式分布
                 </div>
                 <div class="card-body">
-                    <p>总项目数: {{ project_count }}个</p>
-                    <p>进行中项目: {{ active_projects }}个</p>
+                    <div style="height: 300px;">
+                        <canvas id="serviceModeChart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <!-- 问题趋势 -->
+        <!-- 客户级别分布 -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    客户级别分布
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="customerLevelChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row mb-4">
+        <!-- 问题趋势（最近30天） -->
         <div class="col-md-6 mb-4">
             <div class="card">
                 <div class="card-header">
                     最近30天问题趋势
                 </div>
                 <div class="card-body">
-                    <ul class="list-group">
-                        {% for item in problem_trend %}
-                        <li class="list-group-item">
-                            {{ item.date }}: {{ item.count }}个
-                        </li>
-                        {% endfor %}
-                    </ul>
+                    <div style="height: 300px;">
+                        <canvas id="problemTrendChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 问题趋势（最近7天） -->
+        <div class="col-md-6 mb-4">
+            <div class="card">
+                <div class="card-header">
+                    最近7天问题趋势
+                </div>
+                <div class="card-body">
+                    <div style="height: 300px;">
+                        <canvas id="problemTrend7Chart"></canvas>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+    // 客户类型分布图表
+    const customerTypeCtx = document.getElementById('customerTypeChart').getContext('2d');
+    const customerTypeLabels = [];
+    const customerTypeData = [];
+    const customerTypeColors = ['#FF6384', '#36A2EB', '#FFCE56'];
+    
+    {% for item in customer_type_distribution %}
+        {% if item.customer_type == 'trial' %}
+            customerTypeLabels.push('试用客户');
+        {% elif item.customer_type == 'self_develop' %}
+            customerTypeLabels.push('自开发客户');
+        {% elif item.customer_type == 'operations' %}
+            customerTypeLabels.push('售后运维客户');
+        {% endif %}
+        customerTypeData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(customerTypeCtx, {
+        type: 'pie',
+        data: {
+            labels: customerTypeLabels,
+            datasets: [{
+                data: customerTypeData,
+                backgroundColor: customerTypeColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // 客户状态分布图表
+    const customerStatusCtx = document.getElementById('customerStatusChart').getContext('2d');
+    const customerStatusLabels = [];
+    const customerStatusData = [];
+    const customerStatusColors = ['#4BC0C0', '#FF9F40', '#9966FF'];
+    
+    {% for item in customer_status_distribution %}
+        {% if item.status == 'normal' %}
+            customerStatusLabels.push('正常');
+        {% elif item.status == 'abnormal' %}
+            customerStatusLabels.push('异常');
+        {% elif item.status == 'lost' %}
+            customerStatusLabels.push('流失');
+        {% endif %}
+        customerStatusData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(customerStatusCtx, {
+        type: 'pie',
+        data: {
+            labels: customerStatusLabels,
+            datasets: [{
+                data: customerStatusData,
+                backgroundColor: customerStatusColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // 问题状态分布图表
+    const problemStatusCtx = document.getElementById('problemStatusChart').getContext('2d');
+    const problemStatusLabels = [];
+    const problemStatusData = [];
+    const problemStatusColors = ['#4CAF50', '#F44336'];
+    
+    {% for item in problem_status_distribution %}
+        {% if item.is_closed %}
+            problemStatusLabels.push('已关单');
+        {% else %}
+            problemStatusLabels.push('未关单');
+        {% endif %}
+        problemStatusData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(problemStatusCtx, {
+        type: 'pie',
+        data: {
+            labels: problemStatusLabels,
+            datasets: [{
+                data: problemStatusData,
+                backgroundColor: problemStatusColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // 问题类型分布图表
+    const problemTypeCtx = document.getElementById('problemTypeChart').getContext('2d');
+    const problemTypeLabels = [];
+    const problemTypeData = [];
+    const problemTypeColors = ['#FF6384', '#36A2EB', '#FFCE56', '#4BC0C0'];
+    
+    {% for item in problem_type_distribution %}
+        {% if item.problem_type == 'process' %}
+            problemTypeLabels.push('流程问题');
+        {% elif item.problem_type == 'software' %}
+            problemTypeLabels.push('软件问题');
+        {% elif item.problem_type == 'install' %}
+            problemTypeLabels.push('安装部署');
+        {% elif item.problem_type == 'complaint' %}
+            problemTypeLabels.push('投诉');
+        {% endif %}
+        problemTypeData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(problemTypeCtx, {
+        type: 'pie',
+        data: {
+            labels: problemTypeLabels,
+            datasets: [{
+                data: problemTypeData,
+                backgroundColor: problemTypeColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // 服务模式分布图表
+    const serviceModeCtx = document.getElementById('serviceModeChart').getContext('2d');
+    const serviceModeLabels = [];
+    const serviceModeData = [];
+    const serviceModeColors = ['#9966FF', '#FF9F40'];
+    
+    {% for item in service_mode_distribution %}
+        {% if item.service_mode == 'remote' %}
+            serviceModeLabels.push('远程');
+        {% elif item.service_mode == 'onsite' %}
+            serviceModeLabels.push('现场');
+        {% endif %}
+        serviceModeData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(serviceModeCtx, {
+        type: 'pie',
+        data: {
+            labels: serviceModeLabels,
+            datasets: [{
+                data: serviceModeData,
+                backgroundColor: serviceModeColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // 客户级别分布图表
+    const customerLevelCtx = document.getElementById('customerLevelChart').getContext('2d');
+    const customerLevelLabels = [];
+    const customerLevelData = [];
+    const customerLevelColors = ['#FF6384', '#36A2EB', '#FFCE56'];
+    
+    {% for item in customer_level_distribution %}
+        {% if item.customer_level == 'A' %}
+            customerLevelLabels.push('A级');
+        {% elif item.customer_level == 'B' %}
+            customerLevelLabels.push('B级');
+        {% elif item.customer_level == 'C' %}
+            customerLevelLabels.push('C级');
+        {% endif %}
+        customerLevelData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(customerLevelCtx, {
+        type: 'pie',
+        data: {
+            labels: customerLevelLabels,
+            datasets: [{
+                data: customerLevelData,
+                backgroundColor: customerLevelColors,
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false
+        }
+    });
+    
+    // 问题趋势（最近30天）图表
+    const problemTrendCtx = document.getElementById('problemTrendChart').getContext('2d');
+    const problemTrendLabels = [];
+    const problemTrendData = [];
+    
+    {% for item in problem_trend %}
+        problemTrendLabels.push('{{ item.date }}');
+        problemTrendData.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(problemTrendCtx, {
+        type: 'line',
+        data: {
+            labels: problemTrendLabels,
+            datasets: [{
+                label: '问题数量',
+                data: problemTrendData,
+                borderColor: '#36A2EB',
+                backgroundColor: 'rgba(54, 162, 235, 0.2)',
+                borderWidth: 2,
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+    
+    // 问题趋势（最近7天）图表
+    const problemTrend7Ctx = document.getElementById('problemTrend7Chart').getContext('2d');
+    const problemTrend7Labels = [];
+    const problemTrend7Data = [];
+    
+    {% for item in problem_trend_7 %}
+        problemTrend7Labels.push('{{ item.date }}');
+        problemTrend7Data.push({{ item.count }});
+    {% endfor %}
+    
+    new Chart(problemTrend7Ctx, {
+        type: 'bar',
+        data: {
+            labels: problemTrend7Labels,
+            datasets: [{
+                label: '问题数量',
+                data: problemTrend7Data,
+                backgroundColor: 'rgba(54, 162, 235, 0.7)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        stepSize: 1
+                    }
+                }
+            }
+        }
+    });
+</script>
 {% endblock %}

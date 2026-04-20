@@ -19,7 +19,7 @@ import io
 import os
 from .models import (
     CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
-    Project, File, Process, OperationLog,
+    Project, File, Process, OperationLog, Opportunity,
     CUSTOMER_TYPE_TRIAL, CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS,
     CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_ABNORMAL, CUSTOMER_STATUS_LOST,
     CUSTOMER_LEVEL_A, CUSTOMER_LEVEL_B, CUSTOMER_LEVEL_C,
@@ -74,23 +74,37 @@ class CustomerDetailView(LoginRequiredMixin, DetailView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         customer = self.object
+        # 获取商机编号过滤参数
+        opportunity_id = self.request.GET.get('opportunity')
+        
         # 根据客户类型加载不同的模块
         if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
             # 运维客户显示项目、文件、流程、运维记录
             context['projects'] = Project.objects.filter(customer=customer)
-            context['problems'] = Problem.objects.filter(customer=customer)
+            if opportunity_id:
+                context['problems'] = Problem.objects.filter(customer=customer, opportunity_id=opportunity_id)
+            else:
+                context['problems'] = Problem.objects.filter(customer=customer)
         elif customer.customer_type == CUSTOMER_TYPE_SELF_DEVELOP:
             # 自开发客户显示问题记录和主要人员
-            context['problems'] = Problem.objects.filter(customer=customer)
+            if opportunity_id:
+                context['problems'] = Problem.objects.filter(customer=customer, opportunity_id=opportunity_id)
+            else:
+                context['problems'] = Problem.objects.filter(customer=customer)
         elif customer.customer_type == CUSTOMER_TYPE_TRIAL:
             # 试用客户显示试用问题记录和主要人员
-            context['problems'] = Problem.objects.filter(customer=customer)
+            if opportunity_id:
+                context['problems'] = Problem.objects.filter(customer=customer, opportunity_id=opportunity_id)
+            else:
+                context['problems'] = Problem.objects.filter(customer=customer)
             try:
                 context['trial_info'] = TrialCustomer.objects.get(customer=customer)
             except TrialCustomer.DoesNotExist:
                 context['trial_info'] = None
         # 添加用户列表，用于项目负责人和技术负责人选择
         context['users'] = CustomUser.objects.all()
+        # 添加当前选中的商机编号
+        context['selected_opportunity'] = opportunity_id
         return context
 
 class CustomerCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView):
@@ -411,6 +425,7 @@ class ProblemListView(LoginRequiredMixin, ListView):
         is_closed = self.request.GET.get('is_closed', '')
         start_date = self.request.GET.get('start_date', '')
         end_date = self.request.GET.get('end_date', '')
+        opportunity = self.request.GET.get('opportunity', '')
         
         if related_process:
             queryset = queryset.filter(related_process_id=related_process)
@@ -420,6 +435,8 @@ class ProblemListView(LoginRequiredMixin, ListView):
             queryset = queryset.filter(created_at__gte=start_date)
         if end_date:
             queryset = queryset.filter(created_at__lte=end_date)
+        if opportunity:
+            queryset = queryset.filter(opportunity_id=opportunity)
         
         return queryset
     
@@ -427,9 +444,11 @@ class ProblemListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         context['customer_id'] = self.kwargs.get('customer_id')
         # 获取客户信息
-        context['customer'] = get_object_or_404(Customer, id=self.kwargs.get('customer_id'))
+        customer = get_object_or_404(Customer, id=self.kwargs.get('customer_id'))
+        context['customer'] = customer
+        # 获取客户的商机编号
+        context['opportunities'] = customer.opportunities.all()
         # 获取可选的流程（仅运维客户）
-        customer = context['customer']
         if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
             projects = Project.objects.filter(customer=customer)
             context['processes'] = Process.objects.filter(project__in=projects)
@@ -441,7 +460,7 @@ class ProblemListView(LoginRequiredMixin, ListView):
 class ProblemCreateView(LoginRequiredMixin, CreateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'related_process', 'is_closed', 'close_time']
+    fields = ['opportunity', 'title', 'description', 'problem_type', 'service_mode', 'handler', 'related_process', 'is_closed', 'close_time']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
@@ -490,6 +509,8 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
         # 获取可选的流程（仅运维客户）
         customer = get_object_or_404(Customer, id=self.kwargs.get('customer_id'))
         context['customer'] = customer
+        # 获取客户的商机编号
+        context['opportunities'] = customer.opportunities.all()
         if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
             projects = Project.objects.filter(customer=customer)
             context['processes'] = Process.objects.filter(project__in=projects)
@@ -498,7 +519,7 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
 class ProblemUpdateView(LoginRequiredMixin, UpdateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'related_process', 'is_closed', 'close_time']
+    fields = ['opportunity', 'title', 'description', 'problem_type', 'service_mode', 'handler', 'related_process', 'is_closed', 'close_time']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.object.customer.id})
@@ -541,6 +562,8 @@ class ProblemUpdateView(LoginRequiredMixin, UpdateView):
         # 添加customer_id和customer到上下文
         context['customer_id'] = self.object.customer.id
         context['customer'] = self.object.customer
+        # 获取客户的商机编号
+        context['opportunities'] = self.object.customer.opportunities.all()
         return context
 
 class ProblemDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView):
@@ -695,7 +718,7 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                         try:
                             file.seek(0)  # 重置文件指针
                             df = pd.read_csv(file, encoding=encoding)
-                            break  # 成功读取，跳出循环
+                            break  # 成功读取��跳出循环
                         except Exception as e:
                             continue  # 尝试下一个编码
                     
@@ -1331,6 +1354,21 @@ class CustomerProcessesView(LoginRequiredMixin, View):
             })
         return JsonResponse({'processes': process_list})
 
+# 获取客户商机编号的视图
+class CustomerOpportunitiesView(LoginRequiredMixin, View):
+    def get(self, request, customer_id):
+        customer = get_object_or_404(Customer, id=customer_id)
+        # 获取客户的所有商机编号
+        opportunities = customer.opportunities.all()
+        # 构建商机编号列表
+        opportunity_list = []
+        for opportunity in opportunities:
+            opportunity_list.append({
+                'id': opportunity.id,
+                'opportunity_number': opportunity.opportunity_number
+            })
+        return JsonResponse({'opportunities': opportunity_list})
+
 # 数据看板视图
 class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
     template_name = 'service/dashboard.html'
@@ -1344,12 +1382,27 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
         # 客户类型分布
         customer_type_distribution = Customer.objects.values('customer_type').annotate(count=Count('id'))
         
+        # 客户状态分布
+        customer_status_distribution = Customer.objects.values('status').annotate(count=Count('id'))
+        
         # 问题状态分布
         problem_status_distribution = Problem.objects.values('is_closed').annotate(count=Count('id'))
+        
+        # 问题类型分布
+        problem_type_distribution = Problem.objects.values('problem_type').annotate(count=Count('id'))
+        
+        # 服务模式分布
+        service_mode_distribution = Problem.objects.values('service_mode').annotate(count=Count('id'))
+        
+        # 客户级别分布
+        customer_level_distribution = Customer.objects.values('customer_level').annotate(count=Count('id'))
         
         # 运维项目统计
         project_count = Project.objects.count()
         active_projects = Project.objects.filter(status='active').count()
+        
+        # 商机编号统计
+        opportunity_count = Opportunity.objects.count()
         
         # 问题趋势（最近30天）
         start_date = timezone.now() - timezone.timedelta(days=30)
@@ -1359,14 +1412,28 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
             .annotate(count=Count('id'))\
             .order_by('date')
         
+        # 最近7天的问题趋势
+        start_date_7 = timezone.now() - timezone.timedelta(days=7)
+        problem_trend_7 = Problem.objects.filter(created_at__gte=start_date_7)\
+            .extra(select={'date': 'DATE(created_at)'})\
+            .values('date')\
+            .annotate(count=Count('id'))\
+            .order_by('date')
+        
         # 添加客户列表和用户列表，用于记录快捷新增
         from .models import CustomUser
         context = {
             'customer_type_distribution': customer_type_distribution,
+            'customer_status_distribution': customer_status_distribution,
             'problem_status_distribution': problem_status_distribution,
+            'problem_type_distribution': problem_type_distribution,
+            'service_mode_distribution': service_mode_distribution,
+            'customer_level_distribution': customer_level_distribution,
             'project_count': project_count,
             'active_projects': active_projects,
+            'opportunity_count': opportunity_count,
             'problem_trend': problem_trend,
+            'problem_trend_7': problem_trend_7,
             'customers': Customer.objects.all(),
             'users': CustomUser.objects.all()
         }
@@ -1824,3 +1891,380 @@ def root_redirect(request):
         return redirect('service:customer_list')
     else:
         return redirect('service:login')
+
+
+# ===== 商机编号 API 视图 =====
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
+from django.views.decorators.csrf import csrf_protect
+import json
+
+@require_http_methods(["POST"])
+@csrf_protect
+def add_opportunity(request):
+    """
+    API: 添加商机编号
+    POST 请求体：
+    {
+        "customer_id": 1,
+        "opportunity_number": "OPP001",
+        "description": "商机详情"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        customer_id = data.get('customer_id')
+        opportunity_number = data.get('opportunity_number', '').strip()
+        description = data.get('description', '').strip()
+        
+        if not customer_id or not opportunity_number:
+            return JsonResponse({
+                'success': False, 
+                'message': '客户ID和商机编号不能为空'
+            }, status=400)
+        
+        try:
+            customer = Customer.objects.get(id=customer_id)
+        except Customer.DoesNotExist:
+            return JsonResponse({
+                'success': False, 
+                'message': '客户不存在'
+            }, status=404)
+        
+        # 检查是否已存在相同的商机编号（全局唯一性）
+        if Opportunity.objects.filter(opportunity_number=opportunity_number).exists():
+            return JsonResponse({
+                'success': False, 
+                'message': f'商机编号 {opportunity_number} 已存在'
+            }, status=400)
+        
+        opp = Opportunity.objects.create(
+            customer=customer,
+            opportunity_number=opportunity_number,
+            description=description,
+            status='active'
+        )
+        
+        return JsonResponse({
+            'success': True, 
+            'message': '添加成功',
+            'data': {
+                'id': opp.id,
+                'opportunity_number': opp.opportunity_number,
+                'description': opp.description,
+                'status': opp.status
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'message': '无效的 JSON 数据'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["DELETE"])
+@csrf_protect
+def delete_opportunity(request, opp_id):
+    """
+    API: 删除商机编号
+    DELETE /service/api/opportunities/{id}/delete/
+    """
+    try:
+        opp = Opportunity.objects.get(id=opp_id)
+        opp.delete()
+        return JsonResponse({
+            'success': True, 
+            'message': '删除成功'
+        })
+    except Opportunity.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'message': '商机编号不存在'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["GET"])
+def get_opportunities(request, customer_id):
+    """
+    API: 获取客户的所有商机编号
+    GET /service/api/opportunities/customer/{customer_id}/
+    """
+    try:
+        customer = Customer.objects.get(id=customer_id)
+        opportunities = customer.opportunities.all().order_by('-created_at')
+        
+        data = [{
+            'id': opp.id,
+            'opportunity_number': opp.opportunity_number,
+            'description': opp.description,
+            'status': opp.status,
+            'created_at': opp.created_at.strftime('%Y-%m-%d %H:%M:%S')
+        } for opp in opportunities]
+        
+        return JsonResponse({
+            'success': True, 
+            'data': data,
+            'count': len(data)
+        })
+    except Customer.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'message': '客户不存在'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["PUT"])
+@csrf_protect
+def update_opportunity_status(request, opp_id):
+    """
+    API: 更新商机编号状态
+    PUT /service/api/opportunities/{id}/status/
+    请求体：
+    {
+        "status": "active" | "inactive" | "closed"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        new_status = data.get('status')
+        
+        valid_statuses = ['active', 'inactive', 'closed']
+        if new_status not in valid_statuses:
+            return JsonResponse({
+                'success': False, 
+                'message': f'无效的状态，必须是以下之一: {", ".join(valid_statuses)}'
+            }, status=400)
+        
+        opp = Opportunity.objects.get(id=opp_id)
+        opp.status = new_status
+        opp.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': '状态更新成功',
+            'data': {
+                'id': opp.id,
+                'status': opp.status
+            }
+        })
+    except Opportunity.DoesNotExist:
+        return JsonResponse({
+            'success': False, 
+            'message': '商机编号不存在'
+        }, status=404)
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'message': '无效的 JSON 数据'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+@require_http_methods(["POST"])
+@csrf_protect
+def edit_opportunity(request):
+    """
+    API: 编辑商机编号
+    POST 请求体：
+    {
+        "id": 1,
+        "customer_id": 1,
+        "opportunity_number": "OPP002",
+        "description": "商机详情"
+    }
+    """
+    try:
+        data = json.loads(request.body)
+        opp_id = data.get('id')
+        opportunity_number = data.get('opportunity_number', '').strip()
+        description = data.get('description', '').strip()
+        
+        if not opp_id or not opportunity_number:
+            return JsonResponse({
+                'success': False, 
+                'message': '商机编号 ID 和商机编号不能为空'
+            }, status=400)
+        
+        try:
+            opp = Opportunity.objects.get(id=opp_id)
+        except Opportunity.DoesNotExist:
+            return JsonResponse({
+                'success': False, 
+                'message': '商机编号不存在'
+            }, status=404)
+        
+        # 检查新商机编号是否已被其他商机使用
+        if Opportunity.objects.filter(opportunity_number=opportunity_number).exclude(id=opp_id).exists():
+            return JsonResponse({
+                'success': False, 
+                'message': f'商机编号 {opportunity_number} 已存在'
+            }, status=400)
+        
+        opp.opportunity_number = opportunity_number
+        opp.description = description
+        opp.save()
+        
+        return JsonResponse({
+            'success': True, 
+            'message': '编辑成功',
+            'data': {
+                'id': opp.id,
+                'opportunity_number': opp.opportunity_number,
+                'description': opp.description,
+                'status': opp.status
+            }
+        })
+    except json.JSONDecodeError:
+        return JsonResponse({
+            'success': False, 
+            'message': '无效的 JSON 数据'
+        }, status=400)
+    except Exception as e:
+        return JsonResponse({
+            'success': False, 
+            'message': f'服务器错误: {str(e)}'
+        }, status=500)
+
+
+class OpportunityListView(LoginRequiredMixin, ListView):
+    """商机编号列表视图"""
+    model = Opportunity
+    template_name = 'service/opportunity_list.html'
+    context_object_name = 'opportunities'
+    paginate_by = 50
+    
+    def get_paginate_by(self, queryset):
+        # 从请求中获取每页显示数量，默认为50
+        paginate_by = self.request.GET.get('per_page', 50)
+        try:
+            paginate_by = int(paginate_by)
+            # 确保每页数量在合理范围内
+            if paginate_by < 1:
+                paginate_by = 50
+            elif paginate_by > 100:
+                paginate_by = 100
+        except (ValueError, TypeError):
+            paginate_by = 50
+        return paginate_by
+    
+    def get_queryset(self):
+        queryset = Opportunity.objects.all().select_related('customer').order_by('-created_at')
+        
+        # 搜索功能 - 搜索商机编号或客户名称
+        search_term = self.request.GET.get('search', '')
+        if search_term:
+            queryset = queryset.filter(
+                Q(opportunity_number__icontains=search_term) |
+                Q(customer__name__icontains=search_term)
+            )
+        
+        # 按状态筛选
+        status_filter = self.request.GET.get('status', '')
+        if status_filter in ['active', 'inactive', 'closed']:
+            queryset = queryset.filter(status=status_filter)
+        
+        # 按客户筛选
+        customer_id = self.request.GET.get('customer_id', '')
+        if customer_id:
+            try:
+                queryset = queryset.filter(customer_id=int(customer_id))
+            except (ValueError, TypeError):
+                pass
+        
+        return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # 添加当前每页显示数量到上下文
+        context['per_page'] = self.get_paginate_by(self.get_queryset())
+        # 添加客户列表，用于筛选
+        context['customers'] = Customer.objects.all().order_by('name')
+        # 添加当前筛选值
+        context['search_term'] = self.request.GET.get('search', '')
+        context['status_filter'] = self.request.GET.get('status', '')
+        context['customer_filter'] = self.request.GET.get('customer_id', '')
+        # 统计数据
+        all_opportunities = Opportunity.objects.all()
+        context['stats'] = {
+            'total': all_opportunities.count(),
+            'active': all_opportunities.filter(status='active').count(),
+            'inactive': all_opportunities.filter(status='inactive').count(),
+            'closed': all_opportunities.filter(status='closed').count(),
+        }
+        return context
+
+
+class OpportunityExportView(LoginRequiredMixin, View):
+    """商机编号导出视图"""
+    
+    def get(self, request):
+        # 构建查询集
+        queryset = Opportunity.objects.all().select_related('customer').order_by('-created_at')
+        
+        # 应用筛选条件
+        search_term = request.GET.get('search', '')
+        if search_term:
+            queryset = queryset.filter(
+                Q(opportunity_number__icontains=search_term) |
+                Q(customer__name__icontains=search_term)
+            )
+        
+        status_filter = request.GET.get('status', '')
+        if status_filter in ['active', 'inactive', 'closed']:
+            queryset = queryset.filter(status=status_filter)
+        
+        customer_id = request.GET.get('customer_id', '')
+        if customer_id:
+            try:
+                queryset = queryset.filter(customer_id=int(customer_id))
+            except (ValueError, TypeError):
+                pass
+        
+        # 创建 DataFrame
+        data = []
+        status_map = {'active': '有效', 'inactive': '无效', 'closed': '已关闭'}
+        
+        for opp in queryset:
+            data.append({
+                '商机编号': opp.opportunity_number,
+                '客户名称': opp.customer.name,
+                '客户ID': opp.customer.customer_id,
+                '状态': status_map.get(opp.status, opp.status),
+                '创建时间': opp.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                '更新时间': opp.updated_at.strftime('%Y-%m-%d %H:%M:%S'),
+            })
+        
+        df = pd.DataFrame(data)
+        
+        # 创建 Excel 文件
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='商机编号')
+        output.seek(0)
+        
+        # 返回文件
+        response = HttpResponse(
+            output.getvalue(),
+            content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+        )
+        response['Content-Disposition'] = 'attachment; filename="opportunities.xlsx"'
+        return response

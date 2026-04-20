@@ -260,7 +260,6 @@ class Customer(models.Model):
         verbose_name='当前状态'
     )
     contact_person = models.CharField(max_length=100, verbose_name='负责人')
-    opportunity_number = models.CharField(max_length=100, blank=True, verbose_name='商机编号')
     customer_level = models.CharField(
         max_length=1,
         choices=CUSTOMER_LEVEL_CHOICES,
@@ -377,9 +376,49 @@ class Process(models.Model):
     def __str__(self):
         return self.name
 
+class Opportunity(models.Model):
+    """商机编号模型 - 用于处理一个客户多个商机编号的关系"""
+    customer = models.ForeignKey(
+        Customer, 
+        on_delete=models.CASCADE, 
+        related_name='opportunities', 
+        verbose_name='客户'
+    )
+    opportunity_number = models.CharField(
+        max_length=100, 
+        unique=True, 
+        verbose_name='商机编号'
+    )
+    description = models.TextField(blank=True, verbose_name='详情')
+    status = models.CharField(
+        max_length=20,
+        default='active',
+        choices=[
+            ('active', '有效'),
+            ('inactive', '无效'),
+            ('closed', '已关闭'),
+        ],
+        verbose_name='状态'
+    )
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
+    updated_at = models.DateTimeField(auto_now=True, verbose_name='最近更新时间')
+    
+    class Meta:
+        verbose_name = '商机编号'
+        verbose_name_plural = '商机编号列表'
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['opportunity_number']),
+        ]
+    
+    def __str__(self):
+        return f"{self.customer.name} - {self.opportunity_number}"
+
 class Problem(models.Model):
     """问题记录模型"""
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='客户')
+    opportunity = models.ForeignKey(Opportunity, on_delete=models.CASCADE, null=True, blank=True, verbose_name='商机编号')
     title = models.CharField(max_length=255, verbose_name='问题标题')
     description = models.TextField(verbose_name='问题描述')
     problem_type = models.CharField(

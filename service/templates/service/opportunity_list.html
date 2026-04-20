@@ -1,0 +1,191 @@
+{% extends 'service/base.html' %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <h1>商机编号管理</h1>
+        </div>
+        <div class="col-md-6 text-right">
+            <a href="{% url 'service:opportunity_export' %}" class="btn btn-info mr-2">
+                <i class="fa fa-download"></i> 导出
+            </a>
+            <a href="{% url 'service:customer_list' %}" class="btn btn-secondary">返回客户列表</a>
+        </div>
+    </div>
+
+    <!-- 统计卡片 -->
+    <div class="row mb-3">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">总商机数</h5>
+                    <h3 class="text-primary">{{ stats.total }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">有效</h5>
+                    <h3 class="text-success">{{ stats.active }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">无效</h5>
+                    <h3 class="text-warning">{{ stats.inactive }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title">已关闭</h5>
+                    <h3 class="text-danger">{{ stats.closed }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 搜索和筛选 -->
+    <div class="card mb-3">
+        <div class="card-header">
+            <h5>搜索和筛选</h5>
+        </div>
+        <div class="card-body">
+            <form method="GET" class="form-inline">
+                <div class="form-group mr-3 mb-2">
+                    <input type="text" name="search" class="form-control" placeholder="搜索商机编号或客户名称" value="{{ search_term }}">
+                </div>
+                <div class="form-group mr-3 mb-2">
+                    <select name="status" class="form-control">
+                        <option value="">所有状态</option>
+                        <option value="active" {% if status_filter == 'active' %}selected{% endif %}>有效</option>
+                        <option value="inactive" {% if status_filter == 'inactive' %}selected{% endif %}>无效</option>
+                        <option value="closed" {% if status_filter == 'closed' %}selected{% endif %}>已关闭</option>
+                    </select>
+                </div>
+                <div class="form-group mr-3 mb-2">
+                    <select name="customer_id" class="form-control">
+                        <option value="">选择客户</option>
+                        {% for customer in customers %}
+                        <option value="{{ customer.id }}" {% if customer_filter == customer.id|stringformat:"s" %}selected{% endif %}>{{ customer.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group mr-3 mb-2">
+                    <select name="per_page" class="form-control">
+                        <option value="10" {% if per_page == 10 %}selected{% endif %}>每页10条</option>
+                        <option value="25" {% if per_page == 25 %}selected{% endif %}>每页25条</option>
+                        <option value="50" {% if per_page == 50 %}selected{% endif %}>每页50条</option>
+                        <option value="100" {% if per_page == 100 %}selected{% endif %}>每页100条</option>
+                    </select>
+                </div>
+                <button type="submit" class="btn btn-primary mb-2">搜索</button>
+                <a href="{% url 'service:opportunity_list' %}" class="btn btn-secondary mb-2 ml-2">重置</a>
+            </form>
+        </div>
+    </div>
+
+    <!-- 商机列表 -->
+    <div class="card">
+        <div class="card-header">
+            <h5>商机编号列表 (共 {{ opportunities|length }} 条)</h5>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead class="table-light">
+                    <tr>
+                        <th>商机编号</th>
+                        <th>客户名称</th>
+                        <th>客户ID</th>
+                        <th>状态</th>
+                        <th>创建时间</th>
+                        <th>更新时间</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% if opportunities %}
+                        {% for opportunity in opportunities %}
+                        <tr>
+                            <td>
+                                <strong>{{ opportunity.opportunity_number }}</strong>
+                            </td>
+                            <td>
+                                <a href="{% url 'service:customer_detail' opportunity.customer.id %}" class="text-decoration-none">
+                                    {{ opportunity.customer.name }}
+                                </a>
+                            </td>
+                            <td>{{ opportunity.customer.customer_id }}</td>
+                            <td>
+                                {% if opportunity.status == 'active' %}
+                                    <span class="badge badge-success">有效</span>
+                                {% elif opportunity.status == 'inactive' %}
+                                    <span class="badge badge-warning">无效</span>
+                                {% else %}
+                                    <span class="badge badge-danger">已关闭</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ opportunity.created_at|date:"Y-m-d H:i" }}</td>
+                            <td>{{ opportunity.updated_at|date:"Y-m-d H:i" }}</td>
+                            <td>
+                                <a href="{% url 'service:customer_detail' opportunity.customer.id %}" class="btn btn-sm btn-outline-primary" title="查看客户详情">
+                                    <i class="fa fa-eye"></i> 详情
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center text-muted py-4">
+                                <i class="fa fa-inbox" style="font-size: 2rem; margin-bottom: 1rem;"></i>
+                                <p>暂无商机编号数据</p>
+                            </td>
+                        </tr>
+                    {% endif %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- 分页 -->
+    {% if is_paginated %}
+    <nav aria-label="Page navigation" class="mt-3">
+        <ul class="pagination">
+            {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% if search_term %}&search={{ search_term }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if customer_filter %}&customer_id={{ customer_filter }}{% endif %}">首页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if search_term %}&search={{ search_term }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if customer_filter %}&customer_id={{ customer_filter }}{% endif %}">上一页</a>
+                </li>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                {% else %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if search_term %}&search={{ search_term }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if customer_filter %}&customer_id={{ customer_filter }}{% endif %}">{{ num }}</a>
+                    </li>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if search_term %}&search={{ search_term }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if customer_filter %}&customer_id={{ customer_filter }}{% endif %}">下一页</a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% if search_term %}&search={{ search_term }}{% endif %}{% if status_filter %}&status={{ status_filter }}{% endif %}{% if customer_filter %}&customer_id={{ customer_filter }}{% endif %}">末页</a>
+                </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+</div>
+{% endblock %}
+
