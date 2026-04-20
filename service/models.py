@@ -395,7 +395,6 @@ class Problem(models.Model):
         verbose_name='服务模式'
     )
     handler = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='处理人')
-    man_days = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, verbose_name='人天')
     related_process = models.ForeignKey(Process, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='关联流程')
     is_closed = models.CharField(
         max_length=20,

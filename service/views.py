@@ -723,7 +723,6 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     solution = row.get('解决方案')
                     solve_time = row.get('解决时间')
                     handler_name = row.get('处理人')
-                    man_days = row.get('人天')
                     related_process_name = row.get('关联流程')
                     
                     # 验证必填字段
@@ -742,10 +741,6 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     
                     # 处理运维记录的必填字段
                     if customer.customer_type == 'operations':
-                        if not man_days:
-                            error_count += 1
-                            errors.append(f'第{index+2}行: 运维记录的人天为必填字段')
-                            continue
                         if not related_process_name:
                             error_count += 1
                             errors.append(f'第{index+2}行: 运维记录的关联流程为必填字段')
@@ -787,9 +782,7 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                         except CustomUser.DoesNotExist:
                             pass
                     
-                    # 处理人天
-                    if man_days:
-                        problem.man_days = man_days
+
                     
                     # 处理关联流程
                     if related_process_name and customer.customer_type == 'operations':
@@ -887,7 +880,6 @@ class ProblemExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             
             # 运维记录特有字段
             if problem.customer.customer_type == 'operations':
-                row['人天'] = problem.man_days if problem.man_days else ''
                 row['关联流程'] = problem.related_process.name if problem.related_process else ''
             
             data.append(row)
