@@ -38,7 +38,19 @@
                     <p style="margin: 0; font-size: 0.85rem;"><strong>负责人：</strong>{{ customer.contact_person }}</p>
                 </div>
                 <div class="col-md-3" style="padding: 0 0.5rem;">
-                    <p style="margin: 0; font-size: 0.85rem;"><strong>商机编号：</strong>{{ customer.opportunity_number|default:"无" }}</p>
+                    <div style="position: relative;">
+                        <p style="margin: 0; font-size: 0.85rem;"><strong>商机编号：</strong></p>
+                        <div style="font-size: 12px; max-height: 60px; overflow-y: auto; padding-right: 20px;">
+                            {% if customer.opportunity_number %}
+                                {{ customer.opportunity_number|linebreaksbr }}
+                            {% else %}
+                                无
+                            {% endif %}
+                        </div>
+                        <button class="btn btn-xs btn-outline-secondary" style="position: absolute; top: 0; right: 0; padding: 2px 6px;">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
                 </div>
                 <div class="col-md-3" style="padding: 0 0.5rem;">
                     <p style="margin: 0; font-size: 0.85rem;"><strong>客户级别：</strong>

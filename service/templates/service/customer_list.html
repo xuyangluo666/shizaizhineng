@@ -57,7 +57,20 @@
                 <td>{{ customer.get_customer_type_display }}</td>
                 <td>{% if customer.status == 'abnormal' %}<span style="color: red; animation: blink 1s infinite;">{{ customer.get_status_display }}</span>{% else %}{{ customer.get_status_display }}{% endif %}</td>
                 <td>{{ customer.contact_person }}</td>
-                <td>{{ customer.opportunity_number|default:"无" }}</td>
+                <td>
+                    <div style="position: relative; min-height: 60px;">
+                        <div style="font-size: 12px; max-height: 60px; overflow-y: auto; padding-right: 20px;">
+                            {% if customer.opportunity_number %}
+                                {{ customer.opportunity_number|linebreaksbr }}
+                            {% else %}
+                                无
+                            {% endif %}
+                        </div>
+                        <button class="btn btn-xs btn-outline-secondary" style="position: absolute; top: 0; right: 0; padding: 2px 6px;">
+                            <i class="fas fa-cog"></i>
+                        </button>
+                    </div>
+                </td>
                 <td>
                     {% if customer.customer_level == 'A' %}
                         <span style="background-color: #4CAF50; color: white; padding: 2px 8px; border-radius: 12px; font-weight: bold;">{{ customer.get_customer_level_display }}</span>
