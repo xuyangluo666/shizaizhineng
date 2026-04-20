@@ -26,8 +26,7 @@
         </div>
         <div class="col-md-4 text-right">
             <button class="btn btn-danger mr-2" id="batchDeleteBtn" disabled>批量删除</button>
-            <button type="button" class="btn btn-info mr-2" data-toggle="modal" data-target="#quickCreateProblemModal">快速新增问题记录</button>
-            <button type="button" class="btn btn-warning mr-2" data-toggle="modal" data-target="#quickCreateOperationModal">快速新增运维记录</button>
+            <button type="button" class="btn btn-info mr-2" data-toggle="modal" data-target="#quickCreateRecordModal">记录快捷新增</button>
             <button type="button" class="btn btn-success" data-toggle="modal" data-target="#createCustomerModal">新增客户</button>
         </div>
     </div>
@@ -311,22 +310,22 @@
     </div>
 </div>
 
-<!-- 快速新增问题记录模态框 -->
-<div class="modal fade" id="quickCreateProblemModal" tabindex="-1" role="dialog" aria-labelledby="quickCreateProblemModalLabel" aria-hidden="true">
+<!-- 记录快捷新增模态框 -->
+<div class="modal fade" id="quickCreateRecordModal" tabindex="-1" role="dialog" aria-labelledby="quickCreateRecordModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg" role="document">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="quickCreateProblemModalLabel">快速新增问题记录</h5>
+                <h5 class="modal-title" id="quickCreateRecordModalLabel">记录快捷新增</h5>
                 <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                 </button>
             </div>
-            <form id="quickCreateProblemForm" method="post">
+            <form id="quickCreateRecordForm" method="post">
                 {% csrf_token %}
                 <div class="modal-body">
                     <div class="form-group">
-                        <label for="quickCustomerSelect">选择客户</label>
-                        <select class="form-control" id="quickCustomerSelect" name="customer_id" required style="height: 60px">
+                        <label for="quickRecordCustomerSelect">选择客户</label>
+                        <select class="form-control" id="quickRecordCustomerSelect" name="customer_id" required style="height: 60px">
                             <option value="">请选择</option>
                             {% for customer in customers %}
                             <option value="{{ customer.id }}" data-type="{{ customer.customer_type }}">{{ customer.name }} ({{ customer.get_customer_type_display }})</option>
@@ -334,16 +333,16 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="quickCustomerType">客户类型</label>
-                        <input type="text" class="form-control" id="quickCustomerType" readonly>
+                        <label for="quickRecordCustomerType">客户类型</label>
+                        <input type="text" class="form-control" id="quickRecordCustomerType" readonly>
                     </div>
                     <div class="form-group">
-                        <label for="quickProblemTitle">问题标题</label>
-                        <input type="text" class="form-control" id="quickProblemTitle" name="title" required>
+                        <label for="quickRecordTitle">记录标题</label>
+                        <input type="text" class="form-control" id="quickRecordTitle" name="title" required>
                     </div>
                     <div class="form-group">
-                        <label for="quickProblemType">问题类型</label>
-                        <select class="form-control" id="quickProblemType" name="problem_type" required style="height: 60px">
+                        <label for="quickRecordType">问题类型</label>
+                        <select class="form-control" id="quickRecordType" name="problem_type" required style="height: 60px">
                             <option value="流程问题">流程问题</option>
                             <option value="软件问题">软件问题</option>
                             <option value="安装部署">安装部署</option>
@@ -351,135 +350,41 @@
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="quickServiceMode">服务模式</label>
-                        <select class="form-control" id="quickServiceMode" name="service_mode" required style="height: 60px">
+                        <label for="quickRecordServiceMode">服务模式</label>
+                        <select class="form-control" id="quickRecordServiceMode" name="service_mode" required style="height: 60px">
                             <option value="远程">远程</option>
                             <option value="现场">现场</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="quickProblemDescription">问题描述</label>
-                        <textarea class="form-control" id="quickProblemDescription" name="description" rows="3" required></textarea>
+                        <label for="quickRecordDescription">记录描述</label>
+                        <textarea class="form-control" id="quickRecordDescription" name="description" rows="3" required></textarea>
                     </div>
                     <div class="form-group">
-                        <label for="quickHandler">处理人</label>
-                        <select class="form-control" id="quickHandler" name="handler" style="height: 60px">
+                        <label for="quickRecordHandler">处理人</label>
+                        <select class="form-control" id="quickRecordHandler" name="handler" style="height: 60px">
                             <option value="">请选择</option>
                             {% for user in users %}
                             <option value="{{ user.id }}">{{ user.username }}</option>
                             {% endfor %}
                         </select>
                     </div>
-                    <div class="form-group">
-                        <label for="quickManDays">人天</label>
-                        <input type="number" class="form-control" id="quickManDays" name="man_days" min="0" step="0.5">
-                    </div>
-                    <div class="form-group" id="quickProcessContainer" style="display: none;">
-                        <label for="quickRelatedProcess">关联流程</label>
-                        <select class="form-control" id="quickRelatedProcess" name="related_process" style="height: 60px">
+                    <div class="form-group" id="quickRecordProcessContainer" style="display: none;">
+                        <label for="quickRecordRelatedProcess">关联流程</label>
+                        <select class="form-control" id="quickRecordRelatedProcess" name="related_process" style="height: 60px">
                             <option value="">请选择</option>
                         </select>
                     </div>
                     <div class="form-group">
-                        <label for="quickIsClosed">是否关单</label>
-                        <select class="form-control" id="quickIsClosed" name="is_closed" required style="height: 60px">
+                        <label for="quickRecordIsClosed">是否关单</label>
+                        <select class="form-control" id="quickRecordIsClosed" name="is_closed" required style="height: 60px">
                             <option value="false">否</option>
                             <option value="true">是</option>
                         </select>
                     </div>
-                    <div class="form-group" id="quickCloseTimeContainer" style="display: none;">
-                        <label for="quickCloseTime">关单时间</label>
-                        <input type="datetime-local" class="form-control" id="quickCloseTime" name="close_time">
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
-                    <button type="submit" class="btn btn-primary">保存</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- 快速新增运维记录模态框 -->
-<div class="modal fade" id="quickCreateOperationModal" tabindex="-1" role="dialog" aria-labelledby="quickCreateOperationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="quickCreateOperationModalLabel">快速新增运维记录</h5>
-                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                    <span aria-hidden="true">&times;</span>
-                </button>
-            </div>
-            <form id="quickCreateOperationForm" method="post">
-                {% csrf_token %}
-                <div class="modal-body">
-                    <div class="form-group">
-                        <label for="quickOperationCustomerSelect">选择客户</label>
-                        <select class="form-control" id="quickOperationCustomerSelect" name="customer_id" required style="height: 60px">
-                            <option value="">请选择</option>
-                            {% for customer in customers %}
-                            <option value="{{ customer.id }}" data-type="{{ customer.customer_type }}">{{ customer.name }} ({{ customer.get_customer_type_display }})</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationCustomerType">客户类型</label>
-                        <input type="text" class="form-control" id="quickOperationCustomerType" readonly>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationTitle">运维标题</label>
-                        <input type="text" class="form-control" id="quickOperationTitle" name="title" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationType">问题类型</label>
-                        <select class="form-control" id="quickOperationType" name="problem_type" required style="height: 60px">
-                            <option value="流程问题">流程问题</option>
-                            <option value="软件问题">软件问题</option>
-                            <option value="安装部署">安装部署</option>
-                            <option value="投诉">投诉</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationServiceMode">服务模式</label>
-                        <select class="form-control" id="quickOperationServiceMode" name="service_mode" required style="height: 60px">
-                            <option value="远程">远程</option>
-                            <option value="现场">现场</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationDescription">运维描述</label>
-                        <textarea class="form-control" id="quickOperationDescription" name="description" rows="3" required></textarea>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationHandler">处理人</label>
-                        <select class="form-control" id="quickOperationHandler" name="handler" style="height: 60px">
-                            <option value="">请选择</option>
-                            {% for user in users %}
-                            <option value="{{ user.id }}">{{ user.username }}</option>
-                            {% endfor %}
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationManDays">人天</label>
-                        <input type="number" class="form-control" id="quickOperationManDays" name="man_days" min="0" step="0.5" required>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationRelatedProcess">关联流程</label>
-                        <select class="form-control" id="quickOperationRelatedProcess" name="related_process" required style="height: 60px">
-                            <option value="">请选择</option>
-                        </select>
-                    </div>
-                    <div class="form-group">
-                        <label for="quickOperationIsClosed">是否关单</label>
-                        <select class="form-control" id="quickOperationIsClosed" name="is_closed" required style="height: 60px">
-                            <option value="false">否</option>
-                            <option value="true">是</option>
-                        </select>
-                    </div>
-                    <div class="form-group" id="quickOperationCloseTimeContainer" style="display: none;">
-                        <label for="quickOperationCloseTime">关单时间</label>
-                        <input type="datetime-local" class="form-control" id="quickOperationCloseTime" name="close_time">
+                    <div class="form-group" id="quickRecordCloseTimeContainer" style="display: none;">
+                        <label for="quickRecordCloseTime">关单时间</label>
+                        <input type="datetime-local" class="form-control" id="quickRecordCloseTime" name="close_time">
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -749,122 +654,62 @@ $(function() {
             }
         });
     });
-    // 快速新增问题记录 - 客户选择事件
-    $('#quickCustomerSelect').change(function() {
+    // 记录快捷新增 - 客户选择事件
+    $('#quickRecordCustomerSelect').change(function() {
         var selectedOption = $(this).find('option:selected');
         var customerType = selectedOption.data('type');
         var customerTypeName = selectedOption.text().split(' (')[1];
         if (customerTypeName) {
             customerTypeName = customerTypeName.replace(')', '');
         }
-        $('#quickCustomerType').val(customerTypeName || '');
+        $('#quickRecordCustomerType').val(customerTypeName || '');
         
         // 对于运维客户，显示关联流程选择
         if (customerType === 'operations') {
-            $('#quickProcessContainer').show();
+            $('#quickRecordProcessContainer').show();
             var customerId = $(this).val();
             // 加载关联流程
             $.ajax({
                 url: `/service/customers/${customerId}/processes/`,
                 type: 'GET',
                 success: function(response) {
-                    $('#quickRelatedProcess').empty();
-                    $('#quickRelatedProcess').append('<option value="">请选择</option>');
+                    $('#quickRecordRelatedProcess').empty();
+                    $('#quickRecordRelatedProcess').append('<option value="">请选择</option>');
                     if (response.processes) {
                         $.each(response.processes, function(index, process) {
-                            $('#quickRelatedProcess').append(`<option value="${process.id}">${process.name}</option>`);
+                            $('#quickRecordRelatedProcess').append(`<option value="${process.id}">${process.name}</option>`);
                         });
                     }
                 }
             });
         } else {
-            $('#quickProcessContainer').hide();
+            $('#quickRecordProcessContainer').hide();
         }
     });
     
-    // 快速新增问题记录 - 是否关单事件
-    $('#quickIsClosed').change(function() {
+    // 记录快捷新增 - 是否关单事件
+    $('#quickRecordIsClosed').change(function() {
         if ($(this).val() === 'true') {
-            $('#quickCloseTimeContainer').show();
+            $('#quickRecordCloseTimeContainer').show();
         } else {
-            $('#quickCloseTimeContainer').hide();
+            $('#quickRecordCloseTimeContainer').hide();
         }
     });
     
-    // 快速新增问题记录 - 表单提交
-    $('#quickCreateProblemForm').submit(function(e) {
+    // 记录快捷新增 - 表单提交
+    $('#quickCreateRecordForm').submit(function(e) {
         e.preventDefault();
         
         var formData = $(this).serialize();
-        var customerId = $('#quickCustomerSelect').val();
+        var customerId = $('#quickRecordCustomerSelect').val();
         
         $.ajax({
             url: `{% url 'service:problem_create' 0 %}`.replace('0', customerId),
             type: 'POST',
             data: formData,
             success: function(response) {
-                $('#quickCreateProblemModal').modal('hide');
-                alert('问题记录创建成功');
-            },
-            error: function(xhr) {
-                alert('创建失败，请重试');
-                console.log('Creation error:', xhr.responseText);
-            }
-        });
-    });
-    
-    // 快速新增运维记录 - 客户选择事件
-    $('#quickOperationCustomerSelect').change(function() {
-        var selectedOption = $(this).find('option:selected');
-        var customerType = selectedOption.data('type');
-        var customerTypeName = selectedOption.text().split(' (')[1];
-        if (customerTypeName) {
-            customerTypeName = customerTypeName.replace(')', '');
-        }
-        $('#quickOperationCustomerType').val(customerTypeName || '');
-        
-        // 加载关联流程
-        var customerId = $(this).val();
-        if (customerId) {
-            $.ajax({
-                url: `/service/customers/${customerId}/processes/`,
-                type: 'GET',
-                success: function(response) {
-                    $('#quickOperationRelatedProcess').empty();
-                    $('#quickOperationRelatedProcess').append('<option value="">请选择</option>');
-                    if (response.processes) {
-                        $.each(response.processes, function(index, process) {
-                            $('#quickOperationRelatedProcess').append(`<option value="${process.id}">${process.name}</option>`);
-                        });
-                    }
-                }
-            });
-        }
-    });
-    
-    // 快速新增运维记录 - 是否关单事件
-    $('#quickOperationIsClosed').change(function() {
-        if ($(this).val() === 'true') {
-            $('#quickOperationCloseTimeContainer').show();
-        } else {
-            $('#quickOperationCloseTimeContainer').hide();
-        }
-    });
-    
-    // 快速新增运维记录 - 表单提交
-    $('#quickCreateOperationForm').submit(function(e) {
-        e.preventDefault();
-        
-        var formData = $(this).serialize();
-        var customerId = $('#quickOperationCustomerSelect').val();
-        
-        $.ajax({
-            url: `{% url 'service:problem_create' 0 %}`.replace('0', customerId),
-            type: 'POST',
-            data: formData,
-            success: function(response) {
-                $('#quickCreateOperationModal').modal('hide');
-                alert('运维记录创建成功');
+                $('#quickCreateRecordModal').modal('hide');
+                alert('记录创建成功');
             },
             error: function(xhr) {
                 alert('创建失败，请重试');
