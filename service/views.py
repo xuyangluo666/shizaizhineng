@@ -1277,11 +1277,13 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
         return response
     
     def form_invalid(self, form):
+        print(f"Form errors: {form.errors}")
+        print(f"Request data: {self.request.POST}")
         if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
             return JsonResponse({
                 'success': False,
                 'message': '表单验证失败',
-                'errors': form.errors
+                'errors': str(form.errors)
             }, status=400)
         return super().form_invalid(form)
     
@@ -1290,6 +1292,7 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
         context['project_id'] = self.kwargs.get('project_id')
         return context
 
+@method_decorator(csrf_exempt, name='dispatch')
 class ProcessUpdateView(LoginRequiredMixin, UpdateView):
     model = Process
     template_name = 'service/process_form.html'
