@@ -378,8 +378,8 @@
                     <div class="form-group">
                         <label for="quickRecordIsClosed">是否关单</label>
                         <select class="form-control" id="quickRecordIsClosed" name="is_closed" required style="height: 60px">
-                            <option value="false">否</option>
-                            <option value="true">是</option>
+                            <option value="no">否</option>
+                            <option value="yes">是</option>
                         </select>
                     </div>
                     <div class="form-group" id="quickRecordCloseTimeContainer" style="display: none;">
@@ -689,7 +689,7 @@ $(function() {
     
     // 记录快捷新增 - 是否关单事件
     $('#quickRecordIsClosed').change(function() {
-        if ($(this).val() === 'true') {
+        if ($(this).val() === 'yes') {
             $('#quickRecordCloseTimeContainer').show();
         } else {
             $('#quickRecordCloseTimeContainer').hide();
