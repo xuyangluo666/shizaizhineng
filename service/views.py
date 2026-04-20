@@ -1441,9 +1441,9 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
     
     def get(self, request):
         # 检查是否是模板下载请求
-            if request.GET.get('action') == 'download_template':
-                template_path = 'service/templates/service/customer_import_template.csv'
-                filename = '客户导入模板.csv'
+        if request.GET.get('action') == 'download_template':
+            template_path = 'service/templates/service/customer_import_template.csv'
+            filename = '客户导入模板.csv'
             
             try:
                 with open(template_path, 'rb') as f:
