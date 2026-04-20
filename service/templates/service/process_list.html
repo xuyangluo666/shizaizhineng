@@ -3,7 +3,7 @@
 {% block content %}
 <div class="container">
     <h1>{{ project.name }} - 流程管理</h1>
-    <a href="{% url 'service:process_create' project.id %}" class="btn btn-success mb-3">新增流程</a>
+    <button type="button" class="btn btn-success mb-3 create-process" data-project-id="{{ project.id }}" data-project-name="{{ project.name }}">新增流程</button>
     <table class="table table-striped">
         <thead>
             <tr>
@@ -33,4 +33,92 @@
     </table>
     <a href="{% url 'service:customer_detail' project.customer.id %}" class="btn btn-secondary">返回客户详情</a>
 </div>
+
+<!-- 新增流程模态框 -->
+<div class="modal fade" id="createProcessModal" tabindex="-1" role="dialog" aria-labelledby="createProcessModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createProcessModalLabel">新增流程</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createProcessForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="processProjectId" name="project">
+                    <div class="form-group">
+                        <label for="processName">流程名称</label>
+                        <input type="text" class="form-control" id="processName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="processDescription">描述</label>
+                        <textarea class="form-control" id="processDescription" name="description" rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="processEnvironment">部署环境</label>
+                        <select class="form-control" id="processEnvironment" name="deployment_environment" required style="height: 60px">
+                            <option value="dev">开发</option>
+                            <option value="test">测试</option>
+                            <option value="prod">生产</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="processStatus">状态</label>
+                        <select class="form-control" id="processStatus" name="status" required style="height: 60px">
+                            <option value="normal">正常</option>
+                            <option value="error">异常</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(function() {
+        // 新增流程按钮点击事件
+        $(document).on('click', '.create-process', function() {
+            var projectId = $(this).data('project-id');
+            var projectName = $(this).data('project-name');
+            
+            // 填充模态框数据
+            $('#processProjectId').val(projectId);
+            
+            // 显示模态框
+            $('#createProcessModal').modal('show');
+        });
+        
+        // 流程表单提交事件
+        $('#createProcessForm').submit(function(e) {
+            e.preventDefault();
+            
+            var formData = $(this).serialize();
+            var projectId = $('#processProjectId').val();
+            
+            $.ajax({
+                url: "{% url 'service:process_create' 0 %}".replace('0', projectId),
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    // 关闭模态框
+                    $('#createProcessModal').modal('hide');
+                    
+                    // 刷新页面
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('创建流程失败，请重试');
+                    console.log('Process creation error:', xhr.responseText);
+                }
+            });
+        });
+    });
+</script>
 {% endblock %}

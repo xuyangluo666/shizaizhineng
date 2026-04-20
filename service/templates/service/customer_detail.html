@@ -115,7 +115,7 @@
                             <td>
                                 <a href="{% url 'service:file_list' project.id %}" class="btn btn-sm btn-info">文件管理</a>
                                 <a href="{% url 'service:process_list' project.id %}" class="btn btn-sm btn-info">流程管理</a>
-                                <a href="{% url 'service:project_update' project.id %}" class="btn btn-sm btn-warning">编辑</a>
+                                <button class="btn btn-sm btn-warning edit-project" data-id="{{ project.id }}" data-name="{{ project.name }}" data-contract-start-date="{{ project.contract_start_date }}" data-contract-end-date="{{ project.contract_end_date }}" data-project-manager="{{ project.project_manager.id }}" data-technical-manager="{{ project.technical_manager.id }}" data-status="{{ project.status }}">编辑</button>
                                 <button class="btn btn-sm btn-danger delete-project" data-id="{{ project.id }}" data-name="{{ project.name }}">删除</button>
                             </td>
                         </tr>
@@ -365,6 +365,66 @@
     </div>
 </div>
 
+<!-- 编辑项目模态框 -->
+<div class="modal fade" id="editProjectModal" tabindex="-1" role="dialog" aria-labelledby="editProjectModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="editProjectModalLabel">编辑项目</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="editProjectForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="editProjectId">
+                    <div class="form-group">
+                        <label for="editProjectName">项目名称</label>
+                        <input type="text" class="form-control" id="editProjectName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editContractStartDate">合同开始日期</label>
+                        <input type="date" class="form-control" id="editContractStartDate" name="contract_start_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editContractEndDate">合同结束日期</label>
+                        <input type="date" class="form-control" id="editContractEndDate" name="contract_end_date" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="editProjectManager">项目负责人</label>
+                        <select class="form-control" id="editProjectManager" name="project_manager" required style="height: 60px">
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editTechnicalManager">技术负责人</label>
+                        <select class="form-control" id="editTechnicalManager" name="technical_manager" required style="height: 60px">
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="editProjectStatus">项目状态</label>
+                        <select class="form-control" id="editProjectStatus" name="status" required style="height: 60px">
+                            <option value="active">进行中</option>
+                            <option value="ended">已完成</option>
+                            <option value="paused">已暂停</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <!-- 删除项目模态框 -->
 <div class="modal fade" id="deleteProjectModal" tabindex="-1" role="dialog" aria-labelledby="deleteProjectModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
@@ -488,6 +548,61 @@
                 error: function(xhr) {
                     alert('创建项目失败，请重试');
                     console.log('Project creation error:', xhr.responseText);
+                }
+            });
+        });
+        
+        // 编辑项目按钮点击事件
+        $(document).on('click', '.edit-project', function() {
+            console.log('Edit project button clicked');
+            var id = $(this).data('id');
+            var name = $(this).data('name');
+            var contractStartDate = $(this).data('contract-start-date');
+            var contractEndDate = $(this).data('contract-end-date');
+            var projectManager = $(this).data('project-manager');
+            var technicalManager = $(this).data('technical-manager');
+            var status = $(this).data('status');
+            
+            console.log('Project data:', {id: id, name: name, contractStartDate: contractStartDate, contractEndDate: contractEndDate, projectManager: projectManager, technicalManager: technicalManager, status: status});
+            
+            // 填充模态框数据
+            $('#editProjectId').val(id);
+            $('#editProjectName').val(name);
+            $('#editContractStartDate').val(contractStartDate);
+            $('#editContractEndDate').val(contractEndDate);
+            $('#editProjectManager').val(projectManager);
+            $('#editTechnicalManager').val(technicalManager);
+            $('#editProjectStatus').val(status);
+            
+            // 显示模态框
+            console.log('Showing edit project modal...');
+            $('#editProjectModal').modal('show');
+        });
+        
+        // 编辑项目表单提交事件
+        $('#editProjectForm').submit(function(e) {
+            e.preventDefault();
+            
+            var formData = $(this).serialize();
+            var id = $('#editProjectId').val();
+            
+            console.log('Edit project form submitting for ID:', id);
+            
+            $.ajax({
+                url: "{% url 'service:project_update' 0 %}".replace('0', id),
+                type: 'POST',
+                data: formData,
+                success: function(response) {
+                    console.log('Project update successful');
+                    // 关闭模态框
+                    $('#editProjectModal').modal('hide');
+                    
+                    // 刷新页面
+                    location.reload();
+                },
+                error: function(xhr) {
+                    alert('更新项目失败，请重试');
+                    console.log('Project update error:', xhr.responseText);
                 }
             });
         });
