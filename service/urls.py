@@ -12,6 +12,9 @@ urlpatterns = [
     path('customers/<int:pk>/delete/', views.CustomerDeleteView.as_view(), name='customer_delete'),
     path('customers/batch-delete/', views.CustomerBatchDeleteView.as_view(), name='customer_batch_delete'),
     path('customers/<int:pk>/change-type/', views.CustomerTypeChangeView.as_view(), name='customer_change_type'),
+    # 客户导出导入
+    path('customers/export/', views.CustomerExportView.as_view(), name='customer_export'),
+    path('customers/import/', views.CustomerImportView.as_view(), name='customer_import'),
     
     # 问题记录管理
     path('customers/<int:customer_id>/problems/', views.ProblemListView.as_view(), name='problem_list'),

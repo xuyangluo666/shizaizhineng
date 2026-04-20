@@ -21,7 +21,9 @@ from .models import (
     CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
     Project, File, Process, OperationLog,
     CUSTOMER_TYPE_TRIAL, CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS,
-    CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_ABNORMAL
+    CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_ABNORMAL, CUSTOMER_STATUS_LOST,
+    CUSTOMER_LEVEL_A, CUSTOMER_LEVEL_B, CUSTOMER_LEVEL_C,
+    CUSTOMER_TYPE_CHOICES, CUSTOMER_STATUS_CHOICES, CUSTOMER_LEVEL_CHOICES
 )
 
 # 客户管理视图
@@ -1359,6 +1361,231 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
             'users': CustomUser.objects.all()
         }
         return render(request, self.template_name, context)
+
+# 客户导出视图
+class CustomerExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = 'service.view_customer'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get(self, request):
+        # 获取所有客户
+        customers = Customer.objects.all()
+        
+        # 准备导出数据
+        data = []
+        for customer in customers:
+            row = {
+                '客户ID': customer.customer_id,
+                '客户名称': customer.name,
+                '客户类型': dict(CUSTOMER_TYPE_CHOICES).get(customer.customer_type, customer.customer_type),
+                '当前状态': dict(CUSTOMER_STATUS_CHOICES).get(customer.status, customer.status),
+                '负责人': customer.contact_person,
+                '商机编号': customer.opportunity_number or '',
+                '客户级别': dict(CUSTOMER_LEVEL_CHOICES).get(customer.customer_level, customer.customer_level) or '',
+                '创建时间': customer.created_at.strftime('%Y-%m-%d %H:%M:%S'),
+                '最近更新时间': customer.updated_at.strftime('%Y-%m-%d %H:%M:%S')
+            }
+            data.append(row)
+        
+        # 创建Excel文件
+        df = pd.DataFrame(data)
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name='客户数据')
+        output.seek(0)
+        
+        # 记录操作日志
+        try:
+            OperationLog.objects.create(
+                user=request.user,
+                action='导出客户数据',
+                object_type='Customer',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'导出客户数据: {len(data)} 条'
+            )
+        except Exception as e:
+            # 如果外键约束失败，尝试不设置user字段
+            OperationLog.objects.create(
+                user=None,
+                action='导出客户数据',
+                object_type='Customer',
+                ip_address=request.META.get('REMOTE_ADDR'),
+                details=f'导出客户数据: {len(data)} 条'
+            )
+        
+        # 返回响应
+        response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+        response['Content-Disposition'] = f'attachment; filename=customers_{timezone.now().strftime("%Y%m%d%H%M%S")}.xlsx'
+        return response
+
+# 客户导入视图
+class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    template_name = 'service/customer_import.html'
+    permission_required = 'service.add_customer'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def get(self, request):
+        # 检查是否是模板下载请求
+        if request.GET.get('action') == 'download_template':
+            template_path = 'service/templates/service/customer_import_template.xlsx'
+            filename = '客户导入模板.xlsx'
+            
+            try:
+                with open(template_path, 'rb') as f:
+                    response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    response['Content-Disposition'] = f'attachment; filename={filename}'
+                    return response
+            except FileNotFoundError:
+                return JsonResponse({'success': False, 'message': '模板文件不存在'})
+        
+        return render(request, self.template_name)
+    
+    def post(self, request):
+        if 'file' not in request.FILES:
+            return JsonResponse({'success': False, 'message': '请选择文件'})
+        
+        file = request.FILES['file']
+        try:
+            # 获取文件扩展名
+            file_name = file.name
+            file_extension = file_name.split('.')[-1].lower()
+            
+            # 读取文件
+            try:
+                # 先检查文件前几个字节，判断是否为有效的Excel文件
+                file_content = file.read(1024)
+                file.seek(0)  # 重置文件指针
+                
+                # 检查是否为有效的Excel文件
+                if file_extension in ['xlsx']:
+                    # xlsx文件应该以PK开头（ZIP格式）
+                    if not file_content.startswith(b'PK'):
+                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xlsx文件'})
+                    # 尝试使用openpyxl引擎（适用于.xlsx文件）
+                    df = pd.read_excel(file, engine='openpyxl')
+                elif file_extension in ['xls']:
+                    # xls文件应该以特定的BOF记录开头
+                    if not file_content.startswith(b'\xd0\xcf\x11\xe0'):
+                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xls文件'})
+                    # 尝试使用xlrd引擎（适用于.xls文件）
+                    df = pd.read_excel(file, engine='xlrd')
+                elif file_extension in ['csv']:
+                    # 读取CSV文件，尝试不同的编码
+                    try:
+                        df = pd.read_csv(file, encoding='utf-8-sig')
+                    except UnicodeDecodeError:
+                        file.seek(0)
+                        df = pd.read_csv(file, encoding='gbk')
+                else:
+                    return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
+            except Exception as e:
+                return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
+            
+            # 处理数据
+            success_count = 0
+            error_count = 0
+            errors = []
+            
+            for index, row in df.iterrows():
+                try:
+                    # 获取数据
+                    customer_id = row.get('客户ID', '').strip() if pd.notna(row.get('客户ID')) else ''
+                    name = row.get('客户名称', '').strip() if pd.notna(row.get('客户名称')) else ''
+                    customer_type = row.get('客户类型', '').strip() if pd.notna(row.get('客户类型')) else ''
+                    status = row.get('当前状态', '').strip() if pd.notna(row.get('当前状态')) else ''
+                    contact_person = row.get('负责人', '').strip() if pd.notna(row.get('负责人')) else ''
+                    opportunity_number = row.get('商机编号', '').strip() if pd.notna(row.get('商机编号')) else ''
+                    customer_level = row.get('客户级别', '').strip() if pd.notna(row.get('客户级别')) else ''
+                    
+                    # 验证必填字段
+                    if not name or not customer_type or not status or not contact_person:
+                        error_count += 1
+                        errors.append(f'第{index+2}行: 缺少必填字段')
+                        continue
+                    
+                    # 转换客户类型
+                    type_mapping = {'试用客户': CUSTOMER_TYPE_TRIAL, '自开发客户': CUSTOMER_TYPE_SELF_DEVELOP, '售后运维客户': CUSTOMER_TYPE_OPERATIONS}
+                    if customer_type not in type_mapping:
+                        error_count += 1
+                        errors.append(f'第{index+2}行: 客户类型无效')
+                        continue
+                    customer_type = type_mapping[customer_type]
+                    
+                    # 转换客户状态
+                    status_mapping = {'正常': CUSTOMER_STATUS_NORMAL, '异常': CUSTOMER_STATUS_ABNORMAL, '流失': CUSTOMER_STATUS_LOST}
+                    if status not in status_mapping:
+                        error_count += 1
+                        errors.append(f'第{index+2}行: 客户状态无效')
+                        continue
+                    status = status_mapping[status]
+                    
+                    # 转换客户级别
+                    if customer_level:
+                        level_mapping = {'A': CUSTOMER_LEVEL_A, 'B': CUSTOMER_LEVEL_B, 'C': CUSTOMER_LEVEL_C}
+                        if customer_level not in level_mapping:
+                            error_count += 1
+                            errors.append(f'第{index+2}行: 客户级别无效')
+                            continue
+                        customer_level = level_mapping[customer_level]
+                    
+                    # 检查客户ID是否已存在
+                    if customer_id:
+                        if Customer.objects.filter(customer_id=customer_id).exists():
+                            error_count += 1
+                            errors.append(f'第{index+2}行: 客户ID已存在')
+                            continue
+                    
+                    # 创建客户
+                    customer = Customer(
+                        customer_id=customer_id,
+                        name=name,
+                        customer_type=customer_type,
+                        status=status,
+                        contact_person=contact_person,
+                        opportunity_number=opportunity_number,
+                        customer_level=customer_level
+                    )
+                    customer.save()
+                    success_count += 1
+                    
+                except Exception as e:
+                    error_count += 1
+                    errors.append(f'第{index+2}行: {str(e)}')
+            
+            # 记录操作日志
+            try:
+                OperationLog.objects.create(
+                    user=request.user,
+                    action='导入客户数据',
+                    object_type='Customer',
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    details=f'导入客户数据: 成功 {success_count} 条, 失败 {error_count} 条'
+                )
+            except Exception as e:
+                # 如果外键约束失败，尝试不设置user字段
+                OperationLog.objects.create(
+                    user=None,
+                    action='导入客户数据',
+                    object_type='Customer',
+                    ip_address=request.META.get('REMOTE_ADDR'),
+                    details=f'导入客户数据: 成功 {success_count} 条, 失败 {error_count} 条'
+                )
+            
+            return JsonResponse({
+                'success': True,
+                'message': f'导入完成，成功 {success_count} 条, 失败 {error_count} 条',
+                'errors': errors,
+                'redirect_url': reverse('service:customer_list')
+            })
+            
+        except Exception as e:
+            return JsonResponse({'success': False, 'message': f'导入失败: {str(e)}'})
 
 # 认证相关视图
 class RegisterView(FormView):

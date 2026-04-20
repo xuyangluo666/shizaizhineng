@@ -1,0 +1,82 @@
+{% extends 'service/base.html' %}
+
+{% block title %}客户导入{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="card">
+        <div class="card-header">
+            <h2 class="mb-0">客户导入</h2>
+        </div>
+        <div class="card-body">
+            <form id="importForm" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="file">选择文件</label>
+                    <input type="file" class="form-control" id="file" name="file" required accept=".xlsx,.xls,.csv">
+                    <small class="form-text text-muted">支持.xlsx、.xls和.csv格式文件</small>
+                </div>
+                <div class="form-group">
+                    <a href="{% url 'service:customer_import' %}?action=download_template" class="btn btn-info">下载导入模板</a>
+                </div>
+                <button type="submit" class="btn btn-primary">导入</button>
+                <a href="{% url 'service:customer_list' %}" class="btn btn-secondary">返回</a>
+            </form>
+        </div>
+    </div>
+
+    <div class="mt-4">
+        <h4>导入说明</h4>
+        <ul>
+            <li>请按照模板格式填写客户数据</li>
+            <li>必填字段：客户名称、客户类型、当前状态、负责人</li>
+            <li>客户类型选项：试用客户、自开发客户、售后运维客户</li>
+            <li>客户状态选项：正常、异常、流失</li>
+            <li>客户级别选项：A、B、C</li>
+            <li>客户ID如不填写，系统将自动生成</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascript %}
+<script>
+$(function() {
+    $('#importForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = new FormData($(this)[0]);
+        
+        $.ajax({
+            url: '{% url "service:customer_import" %}',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            success: function(response) {
+                if (response.success) {
+                    if (response.errors && response.errors.length > 0) {
+                        var errorMessage = response.message + '\n\n错误详情：\n' + response.errors.join('\n');
+                        alert(errorMessage);
+                    } else {
+                        alert(response.message);
+                    }
+                    if (response.redirect_url) {
+                        window.location.href = response.redirect_url;
+                    }
+                } else {
+                    alert(response.message);
+                }
+            },
+            error: function(xhr) {
+                alert('导入失败，请重试');
+                console.log('Import error:', xhr.responseText);
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
