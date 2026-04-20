@@ -31,10 +31,10 @@
             {% endfor %}
         </tbody>
     </table>
-    <a href="{% url 'service:customer_detail' project.customer.id %}" class="btn btn-secondary">返回客户详情</a>
+    <a href="{% url 'service:customer_detail' project.customer.id %}" class="btn btn-secondary">返回客户详情</a></div>
 </div>
 
-<!-- 删除流程模态框 -->
+<!-- 删除流程确认模态框 -->
 <div class="modal fade" id="deleteProcessModal" tabindex="-1" role="dialog" aria-labelledby="deleteProcessModalLabel" aria-hidden="true">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
@@ -182,7 +182,7 @@
             var csrfToken = getCookie('csrftoken');
             
             $.ajax({
-                url: "{% url 'service:process_delete' 0 %}".replace('0', processId),
+                url: "/service/processes/" + processId + "/delete/",
                 type: 'POST',
                 data: {
                     'csrfmiddlewaretoken': csrfToken

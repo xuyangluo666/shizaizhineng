@@ -1338,39 +1338,12 @@ class ProcessDeleteView(LoginRequiredMixin, DeleteView):
     def get_success_url(self):
         return reverse('service:process_list', kwargs={'project_id': self.object.project.id})
     
-    def delete(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-            process = self.get_object()
-            process_id = process.id
-            process_name = process.name
-            project_id = process.project.id
-            # 记录操作日志
-            try:
-                OperationLog.objects.create(
-                    user=request.user,
-                    action='删除流程',
-                    object_type='Process',
-                    object_id=process_id,
-                    ip_address=request.META.get('REMOTE_ADDR'),
-                    details=f'删除流程: {process_name}'
-                )
-            except Exception as e:
-                OperationLog.objects.create(
-                    user=None,
-                    action='删除流程',
-                    object_type='Process',
-                    object_id=process_id,
-                    ip_address=request.META.get('REMOTE_ADDR'),
-                    details=f'删除流程: {process_name}'
-                )
-            # 执行删除
-            process.delete()
-            return JsonResponse({
-                'success': True,
-                'message': '流程删除成功',
-                'process_id': process_id
-            })
-        
+            return self.delete(request, *args, **kwargs)
+        return super().post(request, *args, **kwargs)
+    
+    def delete(self, request, *args, **kwargs):
         process = self.get_object()
         # 记录操作日志
         try:
