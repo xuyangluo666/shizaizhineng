@@ -665,18 +665,20 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 file.seek(0)  # 重置文件指针
                 
                 # 检查是否为有效的Excel文件
-                if file_extension in ['xlsx']:
-                    # xlsx文件应该以PK开头（ZIP格式）
-                    if not file_content.startswith(b'PK'):
-                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xlsx文件'})
-                    # 尝试使用openpyxl引擎（适用于.xlsx文件）
-                    df = pd.read_excel(file, engine='openpyxl')
-                elif file_extension in ['xls']:
-                    # xls文件应该以特定的BOF记录开头
-                    if not file_content.startswith(b'\xd0\xcf\x11\xe0'):
-                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xls文件'})
-                    # 尝试使用xlrd引擎（适用于.xls文件）
-                    df = pd.read_excel(file, engine='xlrd')
+                if file_extension in ['xlsx', 'xls']:
+                    # 尝试使用不同的引擎读取文件，以兼容不同格式的Excel文件
+                    try:
+                        # 首先尝试openpyxl引擎
+                        df = pd.read_excel(file, engine='openpyxl')
+                    except Exception:
+                        # 如果openpyxl失败，尝试使用xlrd引擎
+                        file.seek(0)
+                        try:
+                            df = pd.read_excel(file, engine='xlrd')
+                        except Exception:
+                            # 如果xlrd也失败，尝试不指定引擎
+                            file.seek(0)
+                            df = pd.read_excel(file)
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
                     try:
@@ -1463,18 +1465,20 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 file.seek(0)  # 重置文件指针
                 
                 # 检查是否为有效的Excel文件
-                if file_extension in ['xlsx']:
-                    # xlsx文件应该以PK开头（ZIP格式）
-                    if not file_content.startswith(b'PK'):
-                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xlsx文件'})
-                    # 尝试使用openpyxl引擎（适用于.xlsx文件）
-                    df = pd.read_excel(file, engine='openpyxl')
-                elif file_extension in ['xls']:
-                    # xls文件应该以特定的BOF记录开头
-                    if not file_content.startswith(b'\xd0\xcf\x11\xe0'):
-                        return JsonResponse({'success': False, 'message': '无效的Excel文件格式，请确保上传的是正确的.xls文件'})
-                    # 尝试使用xlrd引擎（适用于.xls文件）
-                    df = pd.read_excel(file, engine='xlrd')
+                if file_extension in ['xlsx', 'xls']:
+                    # 尝试使用不同的引擎读取文件，以兼容不同格式的Excel文件
+                    try:
+                        # 首先尝试openpyxl引擎
+                        df = pd.read_excel(file, engine='openpyxl')
+                    except Exception:
+                        # 如果openpyxl失败，尝试使用xlrd引擎
+                        file.seek(0)
+                        try:
+                            df = pd.read_excel(file, engine='xlrd')
+                        except Exception:
+                            # 如果xlrd也失败，尝试不指定引擎
+                            file.seek(0)
+                            df = pd.read_excel(file)
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
                     try:
