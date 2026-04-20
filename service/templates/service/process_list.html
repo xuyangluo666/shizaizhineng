@@ -82,6 +82,22 @@
 </div>
 
 <script>
+    // CSRF token获取函数
+    function getCookie(name) {
+        var cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            var cookies = document.cookie.split(';');
+            for (var i = 0; i < cookies.length; i++) {
+                var cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
     $(function() {
         // 新增流程按钮点击事件
         $(document).on('click', '.create-process', function() {
@@ -101,13 +117,15 @@
             
             var formData = $(this).serialize();
             var projectId = $('#processProjectId').val();
+            var csrfToken = getCookie('csrftoken');
             
             $.ajax({
                 url: "{% url 'service:process_create' 0 %}".replace('0', projectId),
                 type: 'POST',
                 data: formData,
                 headers: {
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-CSRFToken': csrfToken
                 },
                 success: function(response) {
                     // 关闭模态框
