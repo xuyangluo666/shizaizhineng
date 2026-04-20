@@ -1476,52 +1476,60 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             
             # 读取文件
             try:
-                # 先检查文件前几个字节，判断是否为有效的Excel文件
-                file_content = file.read(1024)
+                # 尝试使用pandas直接读取，让它自动处理格式和编码
                 file.seek(0)  # 重置文件指针
                 
-                # 检查是否为有效的Excel文件
                 if file_extension in ['xlsx', 'xls']:
-                    # 尝试使用不同的引擎读取文件，以兼容不同格式的Excel文件
-                    engines = ['openpyxl', 'xlrd']
-                    df = None
-                    
-                    for engine in engines:
-                        try:
-                            file.seek(0)  # 重置文件指针
-                            df = pd.read_excel(file, engine=engine)
-                            break  # 成功读取，跳出循环
-                        except Exception as e:
-                            continue  # 尝试下一个引擎
-                    
-                    # 如果所有引擎都失败，尝试使用默认引擎
-                    if df is None:
-                        try:
-                            file.seek(0)
-                            df = pd.read_excel(file)
-                        except Exception as e:
-                            # 所有尝试都失败，返回错误
-                            return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
+                    # 读取Excel文件
+                    df = pd.read_excel(file)
                 elif file_extension in ['csv']:
-                    # 读取CSV文件，尝试不同的编码
-                    encodings = ['utf-8-sig', 'gbk', 'gb18030', 'utf-16']
-                    df = None
-                    
-                    for encoding in encodings:
-                        try:
-                            file.seek(0)  # 重置文件指针
-                            df = pd.read_csv(file, encoding=encoding)
-                            break  # 成功读取，跳出循环
-                        except Exception as e:
-                            continue  # 尝试下一个编码
-                    
-                    # 如果所有编码都失败，返回错误
-                    if df is None:
-                        return JsonResponse({'success': False, 'message': '读取CSV文件失败，无法识别编码格式。请确保文件格式正确且未损坏。'})
+                    # 读取CSV文件，使用更简单的方法
+                    df = pd.read_csv(file)
                 else:
                     return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
             except Exception as e:
-                return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
+                # 如果直接读取失败，尝试使用更通用的方法
+                try:
+                    file.seek(0)  # 重置文件指针
+                    # 尝试使用不同的方式读取
+                    if file_extension in ['csv']:
+                        # 尝试使用Python内置的csv模块
+                        import csv
+                        from io import StringIO
+                        
+                        # 读取文件内容
+                        content = file.read()
+                        
+                        # 尝试不同的编码
+                        encodings = ['utf-8-sig', 'gbk', 'gb18030']
+                        decoded_content = None
+                        
+                        for encoding in encodings:
+                            try:
+                                decoded_content = content.decode(encoding)
+                                break
+                            except Exception:
+                                continue
+                        
+                        if decoded_content:
+                            # 使用csv模块读取
+                            reader = csv.reader(StringIO(decoded_content))
+                            rows = list(reader)
+                            
+                            if rows:
+                                # 构建DataFrame
+                                headers = rows[0]
+                                data = rows[1:]
+                                df = pd.DataFrame(data, columns=headers)
+                            else:
+                                return JsonResponse({'success': False, 'message': '文件内容为空，请确保文件格式正确且未损坏。'})
+                        else:
+                            return JsonResponse({'success': False, 'message': '无法识别文件编码格式，请确保文件格式正确且未损坏。'})
+                    else:
+                        # 对于Excel文件，返回更详细的错误信息
+                        return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件是有效的Excel文件且未损坏。'})
+                except Exception as e2:
+                    return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e2)}。请确保文件格式正确且未损坏。'})
             
             # 处理数据
             success_count = 0
