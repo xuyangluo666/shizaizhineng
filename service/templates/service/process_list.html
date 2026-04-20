@@ -106,6 +106,9 @@
                 url: "{% url 'service:process_create' 0 %}".replace('0', projectId),
                 type: 'POST',
                 data: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
                 success: function(response) {
                     // 关闭模态框
                     $('#createProcessModal').modal('hide');

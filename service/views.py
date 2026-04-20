@@ -1242,6 +1242,15 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
         project_id = self.kwargs.get('project_id')
         form.instance.project = get_object_or_404(Project, id=project_id)
         response = super().form_valid(form)
+        
+        # 检查是否为AJAX请求
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': '流程创建成功',
+                'process_id': self.object.id
+            })
+        
         # 记录操作日志
         try:
             OperationLog.objects.create(
@@ -1263,6 +1272,15 @@ class ProcessCreateView(LoginRequiredMixin, CreateView):
                 details=f'创建流程: {self.object.name} 项目: {self.object.project.name}'
             )
         return response
+    
+    def form_invalid(self, form):
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': False,
+                'message': '表单验证失败',
+                'errors': form.errors
+            }, status=400)
+        return super().form_invalid(form)
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
