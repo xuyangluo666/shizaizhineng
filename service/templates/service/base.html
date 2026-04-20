@@ -162,6 +162,11 @@
                         <i class="fas fa-chart-bar mr-1"></i>数据看板
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="#" data-toggle="modal" data-target="#quickCreateRecordModal">
+                        <i class="fas fa-plus-circle mr-1"></i>记录快捷新增
+                    </a>
+                </li>
             </ul>
             {% endif %}
             <ul class="navbar-nav ml-auto">
@@ -206,5 +211,168 @@
     
     {% block javascript %}
     {% endblock %}
+
+    <!-- 记录快捷新增模态框 -->
+    <div class="modal fade" id="quickCreateRecordModal" tabindex="-1" role="dialog" aria-labelledby="quickCreateRecordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="quickCreateRecordModalLabel">记录快捷新增</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <form id="quickCreateRecordForm" method="post">
+                    {% csrf_token %}
+                    <div class="modal-body">
+                        <div class="form-group">
+                            <label for="quickRecordCustomerSelect">选择客户</label>
+                            <select class="form-control" id="quickRecordCustomerSelect" name="customer_id" required style="height: 60px">
+                                <option value="">请选择</option>
+                                {% for customer in customers %}
+                                <option value="{{ customer.id }}" data-type="{{ customer.customer_type }}">{{ customer.name }} ({{ customer.get_customer_type_display }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordCustomerType">客户类型</label>
+                            <input type="text" class="form-control" id="quickRecordCustomerType" readonly>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordTitle">记录标题</label>
+                            <input type="text" class="form-control" id="quickRecordTitle" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordType">问题类型</label>
+                            <select class="form-control" id="quickRecordType" name="problem_type" required style="height: 60px">
+                                <option value="process">流程问题</option>
+                                <option value="software">软件问题</option>
+                                <option value="install">安装部署</option>
+                                <option value="complaint">投诉</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordServiceMode">服务模式</label>
+                            <select class="form-control" id="quickRecordServiceMode" name="service_mode" required style="height: 60px">
+                                <option value="remote">远程</option>
+                                <option value="onsite">现场</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordDescription">记录描述</label>
+                            <textarea class="form-control" id="quickRecordDescription" name="description" rows="3" required></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordHandler">处理人</label>
+                            <select class="form-control" id="quickRecordHandler" name="handler" style="height: 60px">
+                                <option value="">请选择</option>
+                                {% for user in users %}
+                                <option value="{{ user.id }}">{{ user.username }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group" id="quickRecordProcessContainer" style="display: none;">
+                            <label for="quickRecordRelatedProcess">关联流程</label>
+                            <select class="form-control" id="quickRecordRelatedProcess" name="related_process" style="height: 60px">
+                                <option value="">请选择</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="quickRecordIsClosed">是否关单</label>
+                            <select class="form-control" id="quickRecordIsClosed" name="is_closed" required style="height: 60px">
+                                <option value="no">否</option>
+                                <option value="yes">是</option>
+                            </select>
+                        </div>
+                        <div class="form-group" id="quickRecordCloseTimeContainer" style="display: none;">
+                            <label for="quickRecordCloseTime">关单时间</label>
+                            <input type="datetime-local" class="form-control" id="quickRecordCloseTime" name="close_time">
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                        <button type="submit" class="btn btn-primary">保存</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // 记录快捷新增相关脚本
+    $(function() {
+        // 记录快捷新增 - 客户选择事件
+        $('#quickRecordCustomerSelect').change(function() {
+            var selectedOption = $(this).find('option:selected');
+            var customerType = selectedOption.data('type');
+            var customerTypeName = selectedOption.text().split(' (')[1];
+            if (customerTypeName) {
+                customerTypeName = customerTypeName.replace(')', '');
+            }
+            $('#quickRecordCustomerType').val(customerTypeName || '');
+            
+            // 对于运维客户，显示关联流程选择
+            if (customerType === 'operations') {
+                $('#quickRecordProcessContainer').show();
+                var customerId = $(this).val();
+                // 加载关联流程
+                $.ajax({
+                    url: `/service/customers/${customerId}/processes/`,
+                    type: 'GET',
+                    success: function(response) {
+                        $('#quickRecordRelatedProcess').empty();
+                        $('#quickRecordRelatedProcess').append('<option value="">请选择</option>');
+                        if (response.processes) {
+                            $.each(response.processes, function(index, process) {
+                                $('#quickRecordRelatedProcess').append(`<option value="${process.id}">${process.name}</option>`);
+                            });
+                        }
+                    }
+                });
+            } else {
+                $('#quickRecordProcessContainer').hide();
+            }
+        });
+        
+        // 记录快捷新增 - 是否关单事件
+        $('#quickRecordIsClosed').change(function() {
+            if ($(this).val() === 'yes') {
+                $('#quickRecordCloseTimeContainer').show();
+            } else {
+                $('#quickRecordCloseTimeContainer').hide();
+            }
+        });
+        
+        // 记录快捷新增 - 表单提交
+        $('#quickCreateRecordForm').submit(function(e) {
+            e.preventDefault();
+            
+            var formData = $(this).serialize();
+            var customerId = $('#quickRecordCustomerSelect').val();
+            
+            $.ajax({
+                url: `/service/problems/create/${customerId}/`,
+                type: 'POST',
+                data: formData,
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                success: function(response) {
+                    if (response.success) {
+                        $('#quickCreateRecordModal').modal('hide');
+                        alert('记录创建成功');
+                        location.reload();
+                    } else {
+                        alert('创建失败：' + JSON.stringify(response.errors));
+                    }
+                },
+                error: function(xhr) {
+                    alert('创建失败，请重试');
+                    console.log('Creation error:', xhr.responseText);
+                }
+            });
+        });
+    });
+    </script>
 </body>
 </html>

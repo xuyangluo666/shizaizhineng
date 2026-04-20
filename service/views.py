@@ -1037,6 +1037,10 @@ class FileListView(LoginRequiredMixin, ListView):
         project_id = self.kwargs.get('project_id')
         context['project_id'] = project_id
         context['project'] = get_object_or_404(Project, id=project_id)
+        # 添加客户列表和用户列表，用于记录快捷新增
+        from .models import Customer, CustomUser
+        context['customers'] = Customer.objects.all()
+        context['users'] = CustomUser.objects.all()
         return context
 
 class FileCreateView(LoginRequiredMixin, CreateView):
@@ -1185,6 +1189,10 @@ class ProcessListView(LoginRequiredMixin, ListView):
         project_id = self.kwargs.get('project_id')
         context['project_id'] = project_id
         context['project'] = get_object_or_404(Project, id=project_id)
+        # 添加客户列表和用户列表，用于记录快捷新增
+        from .models import Customer, CustomUser
+        context['customers'] = Customer.objects.all()
+        context['users'] = CustomUser.objects.all()
         return context
 
 class ProcessCreateView(LoginRequiredMixin, CreateView):
@@ -1339,12 +1347,16 @@ class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
             .annotate(count=Count('id'))\
             .order_by('date')
         
+        # 添加客户列表和用户列表，用于记录快捷新增
+        from .models import CustomUser
         context = {
             'customer_type_distribution': customer_type_distribution,
             'problem_status_distribution': problem_status_distribution,
             'project_count': project_count,
             'active_projects': active_projects,
-            'problem_trend': problem_trend
+            'problem_trend': problem_trend,
+            'customers': Customer.objects.all(),
+            'users': CustomUser.objects.all()
         }
         return render(request, self.template_name, context)
 
