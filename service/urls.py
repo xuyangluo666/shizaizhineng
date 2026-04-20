@@ -37,6 +37,8 @@ urlpatterns = [
     path('processes/create/<int:project_id>/', views.ProcessCreateView.as_view(), name='process_create'),
     path('processes/<int:pk>/update/', views.ProcessUpdateView.as_view(), name='process_update'),
     path('processes/<int:pk>/delete/', views.ProcessDeleteView.as_view(), name='process_delete'),
+    # 获取客户流程
+    path('customers/<int:customer_id>/processes/', views.CustomerProcessesView.as_view(), name='customer_processes'),
     
     # 数据看板
     path('dashboard/', views.DashboardView.as_view(), name='dashboard'),

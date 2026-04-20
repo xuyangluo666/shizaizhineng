@@ -60,6 +60,9 @@ class CustomerListView(LoginRequiredMixin, ListView):
         context = super().get_context_data(**kwargs)
         # 添加当前每页显示数量到上下文
         context['per_page'] = self.get_paginate_by(self.get_queryset())
+        # 添加用户列表，用于处理人选择
+        from .models import CustomUser
+        context['users'] = CustomUser.objects.all()
         return context
 
 class CustomerDetailView(LoginRequiredMixin, DetailView):
@@ -1280,6 +1283,23 @@ class ProcessDeleteView(LoginRequiredMixin, DeleteView):
                 details=f'删除流程: {process.name} 项目: {process.project.name}'
             )
         return super().delete(request, *args, **kwargs)
+
+# 获取客户流程的视图
+class CustomerProcessesView(LoginRequiredMixin, View):
+    def get(self, request, customer_id):
+        customer = get_object_or_404(Customer, id=customer_id)
+        # 获取客户的所有项目
+        projects = Project.objects.filter(customer=customer)
+        # 获取所有项目的流程
+        processes = Process.objects.filter(project__in=projects)
+        # 构建流程列表
+        process_list = []
+        for process in processes:
+            process_list.append({
+                'id': process.id,
+                'name': f'{process.project.name} - {process.name}'
+            })
+        return JsonResponse({'processes': process_list})
 
 # 数据看板视图
 class DashboardView(LoginRequiredMixin, PermissionRequiredMixin, View):
