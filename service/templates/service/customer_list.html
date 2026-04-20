@@ -6,7 +6,7 @@
     
     <!-- 搜索和筛选 -->
     <div class="row mb-4">
-        <div class="col-md-6">
+        <div class="col-md-8">
             <form method="get" class="form-inline">
                 <input type="text" name="search" placeholder="搜索客户名称" class="form-control mr-2" value="{{ request.GET.search }}">
                 <select name="type" class="form-control mr-2" style="height: 60px;">
@@ -15,11 +15,18 @@
                     <option value="self_develop" {% if request.GET.type == 'self_develop' %}selected{% endif %}>自开发客户</option>
                     <option value="operations" {% if request.GET.type == 'operations' %}selected{% endif %}>售后运维客户</option>
                 </select>
+                <select name="per_page" class="form-control mr-2" style="height: 60px;">
+                    <option value="10" {% if per_page == 10 %}selected{% endif %}>10条/页</option>
+                    <option value="20" {% if per_page == 20 %}selected{% endif %}>20条/页</option>
+                    <option value="50" {% if per_page == 50 %}selected{% endif %}>50条/页</option>
+                    <option value="100" {% if per_page == 100 %}selected{% endif %}>100条/页</option>
+                </select>
                 <button type="submit" class="btn btn-primary">筛选</button>
             </form>
         </div>
-        <div class="col-md-6 text-right">
-            <a href="{% url 'service:customer_create' %}" class="btn btn-success">新增客户</a>
+        <div class="col-md-4 text-right">
+            <button class="btn btn-danger mr-2" id="batchDeleteBtn" disabled>批量删除</button>
+            <button type="button" class="btn btn-success" data-toggle="modal" data-target="#createCustomerModal">新增客户</button>
         </div>
     </div>
     
@@ -27,6 +34,8 @@
     <table class="table table-striped">
         <thead>
             <tr>
+                <th><input type="checkbox" id="selectAll"></th>
+                <th>客户ID</th>
                 <th>客户名称</th>
                 <th>客户类型</th>
                 <th>当前状态</th>
@@ -40,6 +49,8 @@
         <tbody>
             {% for customer in customers %}
             <tr id="customer-{{ customer.id }}">
+                <td><input type="checkbox" class="customer-checkbox" value="{{ customer.id }}"></td>
+                <td>{{ customer.customer_id }}</td>
                 <td><a href="{% url 'service:customer_detail' customer.id %}">{{ customer.name }}</a></td>
                 <td>{{ customer.get_customer_type_display }}</td>
                 <td>{% if customer.status == 'abnormal' %}<span style="color: red; animation: blink 1s infinite;">{{ customer.get_status_display }}</span>{% else %}{{ customer.get_status_display }}{% endif %}</td>
@@ -58,10 +69,10 @@
                 </td>
                 <td>{{ customer.updated_at|date:"Y-m-d H:i:s" }}</td>
                 <td>
-                    <button class="btn btn-sm btn-info edit-customer" data-id="{{ customer.id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-opportunity-number="{{ customer.opportunity_number|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}">编辑</button>
+                    <button class="btn btn-sm btn-info edit-customer" data-id="{{ customer.id }}" data-customer-id="{{ customer.customer_id }}" data-name="{{ customer.name }}" data-status="{{ customer.status }}" data-contact-person="{{ customer.contact_person }}" data-opportunity-number="{{ customer.opportunity_number|default:'' }}" data-customer-level="{{ customer.customer_level|default:'' }}">编辑</button>
                     <button class="btn btn-sm btn-danger delete-customer" data-id="{{ customer.id }}" data-name="{{ customer.name }}">删除</button>
                     {% if customer.customer_type != 'operations' %}
-                    <a href="{% url 'service:customer_change_type' customer.id %}" class="btn btn-sm btn-warning">变更类型</a>
+                    <button class="btn btn-sm btn-warning change-type-customer" data-id="{{ customer.id }}" data-name="{{ customer.name }}" data-type="{{ customer.customer_type }}">变更类型</button>
                     {% endif %}
                 </td>
             </tr>
@@ -78,7 +89,7 @@
             {% endif %}
             
             <span class="current">
-                第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页
+                第 {{ page_obj.number }} 页，共 {{ page_obj.paginator.num_pages }} 页，总 {{ page_obj.paginator.count }} 条
             </span>
             
             {% if page_obj.has_next %}
@@ -87,7 +98,6 @@
             {% endif %}
         </span>
     </div>
-</div>
 
 <!-- 编辑客户模态框 -->
 <div class="modal fade" id="editCustomerModal" tabindex="-1" role="dialog" aria-labelledby="editCustomerModalLabel" aria-hidden="true">
@@ -104,12 +114,16 @@
                 <div class="modal-body">
                     <input type="hidden" id="customerId" name="id">
                     <div class="form-group">
+                        <label for="customerIdInput">客户ID</label>
+                        <input type="text" class="form-control" id="customerIdInput" name="customer_id" required readonly>
+                    </div>
+                    <div class="form-group">
                         <label for="customerName">客户名称</label>
                         <input type="text" class="form-control" id="customerName" name="name" required>
                     </div>
                     <div class="form-group">
                         <label for="customerStatus">状态</label>
-                        <select class="form-control" id="customerStatus" name="status" required style="height: 50px";>
+                        <select class="form-control" id="customerStatus" name="status" required style="height: 60px">
                             <option value="normal">正常</option>
                             <option value="abnormal">异常</option>
                             <option value="lost">流失</option>
@@ -125,7 +139,7 @@
                     </div>
                     <div class="form-group">
                         <label for="customerLevel">客户级别</label>
-                        <select class="form-control" id="customerLevel" name="customer_level" style="height: 50px;">
+                        <select class="form-control" id="customerLevel" name="customer_level" style="height: 60px;">
                             <option value="">请选择</option>
                             <option value="A">A</option>
                             <option value="B">B</option>
@@ -139,7 +153,68 @@
                 </div>
             </form>
         </div>
+    </div>
 </div>
+
+<!-- 新增客户模态框 -->
+<div class="modal fade" id="createCustomerModal" tabindex="-1" role="dialog" aria-labelledby="createCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createCustomerModalLabel">新增客户</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createCustomerForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="createCustomerName">客户名称</label>
+                        <input type="text" class="form-control" id="createCustomerName" name="name" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="createCustomerType">客户类型</label>
+                        <select class="form-control" id="createCustomerType" name="customer_type" required style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="trial">试用客户</option>
+                            <option value="self_develop">自开发客户</option>
+                            <option value="operations">售后运维客户</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="createCustomerStatus">状态</label>
+                        <select class="form-control" id="createCustomerStatus" name="status" required style="height: 60px">
+                            <option value="normal">正常</option>
+                            <option value="abnormal">异常</option>
+                            <option value="lost">流失</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="createContactPerson">负责人</label>
+                        <input type="text" class="form-control" id="createContactPerson" name="contact_person" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="createOpportunityNumber">商机编号</label>
+                        <input type="text" class="form-control" id="createOpportunityNumber" name="opportunity_number">
+                    </div>
+                    <div class="form-group">
+                        <label for="createCustomerLevel">客户级别</label>
+                        <select class="form-control" id="createCustomerLevel" name="customer_level" style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="A">A</option>
+                            <option value="B">B</option>
+                            <option value="C">C</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <!-- 删除客户确认模态框 -->
@@ -164,6 +239,78 @@
     </div>
 </div>
 
+<!-- 批量删除确认模态框 -->
+<div class="modal fade" id="batchDeleteModal" tabindex="-1" role="dialog" aria-labelledby="batchDeleteModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="batchDeleteModalLabel">批量删除</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除选中的 <strong id="batchDeleteCount"></strong> 个客户吗？此操作不可撤销。</p>
+                <input type="hidden" id="batchDeleteIds">
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-danger" id="confirmBatchDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 类型变更模态框 -->
+<div class="modal fade" id="changeTypeModal" tabindex="-1" role="dialog" aria-labelledby="changeTypeModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="changeTypeModalLabel">变更客户类型</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="changeTypeForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <input type="hidden" id="changeTypeCustomerId" name="id">
+                    <div class="form-group">
+                        <label for="changeTypeCustomerName">客户名称</label>
+                        <input type="text" class="form-control" id="changeTypeCustomerName" readonly>
+                    </div>
+                    <div class="form-group">
+                        <label for="newType">新客户类型</label>
+                        <select class="form-control" id="newType" name="new_type" required style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="self_develop">自开发客户</option>
+                            <option value="operations">售后运维客户</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="changeReason">变更原因</label>
+                        <textarea class="form-control" id="changeReason" name="change_reason" rows="3" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="initProject" name="init_project">
+                            <label class="form-check-label" for="initProject">
+                                初始化项目（仅变更为售后运维客户时有效）
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">确认变更</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
 {% block javascript %}
 <script>
 // 确保DOM加载完成
@@ -174,16 +321,18 @@ $(function() {
     $(document).on('click', '.edit-customer', function() {
         console.log('Edit button clicked');
         var id = $(this).data('id');
+        var customerId = $(this).data('customer-id');
         var name = $(this).data('name');
         var status = $(this).data('status');
         var contactPerson = $(this).data('contact-person');
         var opportunityNumber = $(this).data('opportunity-number');
         var customerLevel = $(this).data('customer-level');
         
-        console.log('Customer data:', {id: id, name: name, status: status});
+        console.log('Customer data:', {id: id, customerId: customerId, name: name, status: status});
         
         // 填充表单数据
         $('#customerId').val(id);
+        $('#customerIdInput').val(customerId);
         $('#customerName').val(name);
         $('#customerStatus').val(status);
         $('#contactPerson').val(contactPerson);
@@ -263,7 +412,161 @@ $(function() {
             }
         });
     });
+    
+    // 新增客户表单提交事件
+    $('#createCustomerForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = $(this).serialize();
+        
+        console.log('Creating new customer...');
+        
+        $.ajax({
+            url: "{% url 'service:customer_create' %}",
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                console.log('Creation successful');
+                // 关闭模态框
+                $('#createCustomerModal').modal('hide');
+                
+                // 刷新页面
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('创建失败，请重试');
+                console.log('Creation error:', xhr.responseText);
+            }
+        });
+    });
+    
+    // 全选/取消全选
+    $('#selectAll').click(function() {
+        var isChecked = $(this).prop('checked');
+        $('.customer-checkbox').prop('checked', isChecked);
+        updateBatchDeleteButton();
+    });
+    
+    // 单个复选框点击事件
+    $(document).on('click', '.customer-checkbox', function() {
+        updateBatchDeleteButton();
+        // 检查是否所有复选框都被选中
+        var allChecked = $('.customer-checkbox:checked').length === $('.customer-checkbox').length;
+        $('#selectAll').prop('checked', allChecked);
+    });
+    
+    // 更新批量删除按钮状态
+    function updateBatchDeleteButton() {
+        var checkedCount = $('.customer-checkbox:checked').length;
+        $('#batchDeleteBtn').prop('disabled', checkedCount === 0);
+    }
+    
+    // 批量删除按钮点击事件
+    $('#batchDeleteBtn').click(function() {
+        var checkedBoxes = $('.customer-checkbox:checked');
+        var customerIds = [];
+        
+        checkedBoxes.each(function() {
+            customerIds.push($(this).val());
+        });
+        
+        console.log('Batch delete customers:', customerIds);
+        
+        // 填充模态框数据
+        $('#batchDeleteCount').text(customerIds.length);
+        $('#batchDeleteIds').val(customerIds.join(','));
+        
+        // 显示模态框
+        console.log('Showing batch delete confirmation modal...');
+        $('#batchDeleteModal').modal('show');
+    });
+    
+    // 确认批量删除按钮点击事件
+    $('#confirmBatchDelete').click(function() {
+        var customerIds = $('#batchDeleteIds').val().split(',');
+        console.log('Confirming batch delete for customers:', customerIds);
+        
+        $.ajax({
+            url: "{% url 'service:customer_batch_delete' %}",
+            type: 'POST',
+            data: {
+                'customer_ids': customerIds,
+                'csrfmiddlewaretoken': $('input[name=csrfmiddlewaretoken]').val()
+            },
+            success: function(response) {
+                console.log('Batch delete successful');
+                // 关闭模态框
+                $('#batchDeleteModal').modal('hide');
+                
+                // 刷新页面
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('批量删除失败，请重试');
+                console.log('Batch delete error:', xhr.responseText);
+            }
+        });
+    });
+    
+    // 变更类型按钮点击事件
+    $(document).on('click', '.change-type-customer', function() {
+        console.log('Change type button clicked');
+        var id = $(this).data('id');
+        var name = $(this).data('name');
+        var type = $(this).data('type');
+        
+        console.log('Change type for customer:', {id: id, name: name, type: type});
+        
+        // 填充模态框数据
+        $('#changeTypeCustomerId').val(id);
+        $('#changeTypeCustomerName').val(name);
+        
+        // 根据当前类型设置可选的新类型
+        var newTypeSelect = $('#newType');
+        newTypeSelect.empty();
+        newTypeSelect.append('<option value="">请选择</option>');
+        
+        if (type === 'trial') {
+            // 试用客户可以变更为自开发或售后运维客户
+            newTypeSelect.append('<option value="self_develop">自开发客户</option>');
+            newTypeSelect.append('<option value="operations">售后运维客户</option>');
+        } else if (type === 'self_develop') {
+            // 自开发客户只能变更为售后运维客户
+            newTypeSelect.append('<option value="operations">售后运维客户</option>');
+        }
+        
+        // 显示模态框
+        console.log('Showing change type modal...');
+        $('#changeTypeModal').modal('show');
+    });
+    
+    // 类型变更表单提交事件
+    $('#changeTypeForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = $(this).serialize();
+        var id = $('#changeTypeCustomerId').val();
+        
+        console.log('Form submitting for customer ID:', id);
+        
+        $.ajax({
+            url: "{% url 'service:customer_change_type' 0 %}".replace('0', id),
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                console.log('Type change successful');
+                // 关闭模态框
+                $('#changeTypeModal').modal('hide');
+                
+                // 刷新页面
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('类型变更失败，请重试');
+                console.log('Type change error:', xhr.responseText);
+            }
+        });
+    });
 });
 </script>
-{% endblock %}
 {% endblock %}

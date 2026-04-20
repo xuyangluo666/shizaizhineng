@@ -18,8 +18,8 @@ class CustomerTypeChangeLogAdmin(admin.ModelAdmin):
 
 @admin.register(Problem)
 class ProblemAdmin(admin.ModelAdmin):
-    list_display = ('title', 'customer', 'status', 'handler')
-    list_filter = ('status', 'customer__customer_type')
+    list_display = ('title', 'customer', 'is_closed', 'handler')
+    list_filter = ('is_closed', 'customer__customer_type')
     search_fields = ('title', 'description')
 
 @admin.register(TrialCustomer)

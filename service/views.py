@@ -29,7 +29,20 @@ class CustomerListView(LoginRequiredMixin, ListView):
     model = Customer
     template_name = 'service/customer_list.html'
     context_object_name = 'customers'
-    paginate_by = 10
+    
+    def get_paginate_by(self, queryset):
+        # 从请求中获取每页显示数量，默认为50
+        paginate_by = self.request.GET.get('per_page', 50)
+        try:
+            paginate_by = int(paginate_by)
+            # 确保每页数量在合理范围内
+            if paginate_by < 1:
+                paginate_by = 50
+            elif paginate_by > 100:
+                paginate_by = 100
+        except (ValueError, TypeError):
+            paginate_by = 50
+        return paginate_by
     
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -42,6 +55,12 @@ class CustomerListView(LoginRequiredMixin, ListView):
         if customer_type:
             queryset = queryset.filter(customer_type=customer_type)
         return queryset
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        # 添加当前每页显示数量到上下文
+        context['per_page'] = self.get_paginate_by(self.get_queryset())
+        return context
 
 class CustomerDetailView(LoginRequiredMixin, DetailView):
     model = Customer
@@ -110,6 +129,9 @@ class CustomerCreateView(LoginRequiredMixin, PermissionRequiredMixin, CreateView
                 trial_end_time=timezone.now() + timezone.timedelta(days=30),
                 conversion_status=False
             )
+        # 检查是否是AJAX请求
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '客户创建成功'})
         return response
 
 class CustomerUpdateView(LoginRequiredMixin, PermissionRequiredMixin, UpdateView):
@@ -218,6 +240,46 @@ class CustomerDeleteView(LoginRequiredMixin, PermissionRequiredMixin, DeleteView
             )
         return super().delete(request, *args, **kwargs)
 
+class CustomerBatchDeleteView(LoginRequiredMixin, PermissionRequiredMixin, View):
+    permission_required = 'service.delete_customer'
+    
+    def handle_no_permission(self):
+        from django.shortcuts import render
+        return render(self.request, 'service/permission_denied.html', status=403)
+    
+    def post(self, request):
+        customer_ids = request.POST.getlist('customer_ids[]')
+        if customer_ids:
+            customers = Customer.objects.filter(id__in=customer_ids)
+            # 记录操作日志
+            for customer in customers:
+                try:
+                    OperationLog.objects.create(
+                        user=request.user,
+                        action='批量删除客户',
+                        object_type='Customer',
+                        object_id=customer.id,
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        details=f'批量删除客户: {customer.name}'
+                    )
+                except Exception as e:
+                    # 如果外键约束失败，尝试不设置user字段
+                    OperationLog.objects.create(
+                        user=None,
+                        action='批量删除客户',
+                        object_type='Customer',
+                        object_id=customer.id,
+                        ip_address=request.META.get('REMOTE_ADDR'),
+                        details=f'批量删除客户: {customer.name}'
+                    )
+            delete_count = customers.count()
+            customers.delete()
+            if delete_count == 1:
+                return JsonResponse({'success': True, 'message': '成功删除1个客户'})
+            else:
+                return JsonResponse({'success': True, 'message': f'成功删除{delete_count}个客户'})
+        return JsonResponse({'success': False, 'message': '请选择要删除的客户'})
+
 class CustomerTypeChangeView(LoginRequiredMixin, PermissionRequiredMixin, View):
     template_name = 'service/customer_type_change.html'
     permission_required = 'service.change_customer'
@@ -323,6 +385,9 @@ class CustomerTypeChangeView(LoginRequiredMixin, PermissionRequiredMixin, View):
                 details=f'客户类型变更: {customer.name} 从 {old_type} 变更为 {new_type}'
             )
         
+        # 检查是否是AJAX请求
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '客户类型变更成功'})
         return redirect('service:customer_detail', pk=pk)
 
 # 问题记录管理视图
@@ -337,13 +402,19 @@ class ProblemListView(LoginRequiredMixin, ListView):
         queryset = Problem.objects.filter(customer_id=customer_id)
         
         # 筛选功能
-        status = self.request.GET.get('status', '')
         related_process = self.request.GET.get('related_process', '')
+        is_closed = self.request.GET.get('is_closed', '')
+        start_date = self.request.GET.get('start_date', '')
+        end_date = self.request.GET.get('end_date', '')
         
-        if status:
-            queryset = queryset.filter(status=status)
         if related_process:
             queryset = queryset.filter(related_process_id=related_process)
+        if is_closed:
+            queryset = queryset.filter(is_closed=is_closed)
+        if start_date:
+            queryset = queryset.filter(created_at__gte=start_date)
+        if end_date:
+            queryset = queryset.filter(created_at__lte=end_date)
         
         return queryset
     
@@ -357,12 +428,15 @@ class ProblemListView(LoginRequiredMixin, ListView):
         if customer.customer_type == CUSTOMER_TYPE_OPERATIONS:
             projects = Project.objects.filter(customer=customer)
             context['processes'] = Process.objects.filter(project__in=projects)
+        # 获取所有用户（用于处理人选择）
+        from .models import CustomUser
+        context['users'] = CustomUser.objects.all()
         return context
 
 class ProblemCreateView(LoginRequiredMixin, CreateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'status', 'problem_reason', 'reason_type', 'solution', 'solve_time', 'handler', 'man_days', 'related_process']
+    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'man_days', 'related_process', 'is_closed', 'close_time']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
@@ -395,6 +469,9 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
                 ip_address=self.request.META.get('REMOTE_ADDR'),
                 details=f'创建问题: {self.object.title} 客户: {self.object.customer.name}'
             )
+        # 检查是否是AJAX请求
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '问题记录创建成功'})
         return response
     
     def get_context_data(self, **kwargs):
@@ -411,7 +488,7 @@ class ProblemCreateView(LoginRequiredMixin, CreateView):
 class ProblemUpdateView(LoginRequiredMixin, UpdateView):
     model = Problem
     template_name = 'service/problem_form.html'
-    fields = ['title', 'description', 'screenshot', 'occurrence_time', 'status', 'problem_reason', 'reason_type', 'solution', 'solve_time', 'handler', 'man_days', 'related_process']
+    fields = ['title', 'description', 'problem_type', 'service_mode', 'handler', 'man_days', 'related_process', 'is_closed', 'close_time']
     
     def get_success_url(self):
         return reverse('service:problem_list', kwargs={'customer_id': self.object.customer.id})
@@ -814,30 +891,13 @@ class ProblemExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
         return response
 
 # 项目管理视图
-class ProjectListView(LoginRequiredMixin, ListView):
-    model = Project
-    template_name = 'service/project_list.html'
-    context_object_name = 'projects'
-    paginate_by = 10
-    
-    def get_queryset(self):
-        customer_id = self.kwargs.get('customer_id')
-        return Project.objects.filter(customer_id=customer_id)
-    
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        customer_id = self.kwargs.get('customer_id')
-        context['customer_id'] = customer_id
-        context['customer'] = get_object_or_404(Customer, id=customer_id)
-        return context
-
 class ProjectCreateView(LoginRequiredMixin, CreateView):
     model = Project
     template_name = 'service/project_form.html'
-    fields = ['name', 'contract_start_date', 'contract_end_date', 'project_manager', 'technical_manager', 'status', 'description']
+    fields = ['name', 'contract_start_date', 'contract_end_date', 'project_manager', 'technical_manager', 'status']
     
     def get_success_url(self):
-        return reverse('service:project_list', kwargs={'customer_id': self.kwargs.get('customer_id')})
+        return reverse('service:customer_detail', kwargs={'pk': self.kwargs.get('customer_id')})
     
     def form_valid(self, form):
         customer_id = self.kwargs.get('customer_id')
@@ -863,11 +923,17 @@ class ProjectCreateView(LoginRequiredMixin, CreateView):
                 ip_address=self.request.META.get('REMOTE_ADDR'),
                 details=f'创建项目: {self.object.name} 客户: {self.object.customer.name}'
             )
+        # 检查是否是AJAX请求
+        if self.request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '项目创建成功'})
         return response
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['customer_id'] = self.kwargs.get('customer_id')
+        # 添加用户列表，用于项目负责人和技术负责人选择
+        from .models import CustomUser
+        context['users'] = CustomUser.objects.all()
         return context
 
 class ProjectUpdateView(LoginRequiredMixin, UpdateView):
@@ -876,7 +942,7 @@ class ProjectUpdateView(LoginRequiredMixin, UpdateView):
     fields = ['name', 'contract_start_date', 'contract_end_date', 'project_manager', 'technical_manager', 'status', 'description']
     
     def get_success_url(self):
-        return reverse('service:project_list', kwargs={'customer_id': self.object.customer.id})
+        return reverse('service:customer_detail', kwargs={'pk': self.object.customer.id})
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
@@ -912,7 +978,7 @@ class ProjectDeleteView(LoginRequiredMixin, DeleteView):
     template_name = 'service/project_confirm_delete.html'
     
     def get_success_url(self):
-        return reverse('service:project_list', kwargs={'customer_id': self.object.customer.id})
+        return reverse('service:customer_detail', kwargs={'pk': self.object.customer.id})
     
     def delete(self, request, *args, **kwargs):
         project = self.get_object()
@@ -936,7 +1002,11 @@ class ProjectDeleteView(LoginRequiredMixin, DeleteView):
                 ip_address=request.META.get('REMOTE_ADDR'),
                 details=f'删除项目: {project.name} 客户: {project.customer.name}'
             )
-        return super().delete(request, *args, **kwargs)
+        response = super().delete(request, *args, **kwargs)
+        # 检查是否是AJAX请求
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({'success': True, 'message': '项目删除成功'})
+        return response
 
 # 文件管理视图
 class FileListView(LoginRequiredMixin, ListView):

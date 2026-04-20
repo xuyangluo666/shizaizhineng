@@ -69,7 +69,7 @@ class CustomUser(AbstractUser):
             <div class="container">
                 <h2>账号激活</h2>
                 <p>亲爱的 {self.username}，</p>
-                <p>感谢您注册RPA售后服务管理系统！</p>
+                <p>感谢您注册实在智能KA客户服务管理系统！</p>
                 <p>请点击下方按钮激活您的账号：</p>
                 <a href="{activation_url}" class="button">激活账号</a>
                 <p>如果按钮无法点击，请复制以下链接到浏览器打开：</p>
@@ -185,44 +185,35 @@ CUSTOMER_LEVEL_CHOICES = [
     (CUSTOMER_LEVEL_C, 'C'),
 ]
 
-# 问题状态常量
-PROBLEM_STATUS_PENDING = 'pending'
-PROBLEM_STATUS_PROCESSING = 'processing'
-PROBLEM_STATUS_COMPLETED = 'completed'
+# 问题类型常量
+PROBLEM_TYPE_PROCESS = 'process'
+PROBLEM_TYPE_SOFTWARE = 'software'
+PROBLEM_TYPE_INSTALL = 'install'
+PROBLEM_TYPE_COMPLAINT = 'complaint'
 
-PROBLEM_STATUS_CHOICES = [
-    (PROBLEM_STATUS_PENDING, '待处理'),
-    (PROBLEM_STATUS_PROCESSING, '处理中'),
-    (PROBLEM_STATUS_COMPLETED, '已完成'),
+PROBLEM_TYPE_CHOICES = [
+    (PROBLEM_TYPE_PROCESS, '流程问题'),
+    (PROBLEM_TYPE_SOFTWARE, '软件问题'),
+    (PROBLEM_TYPE_INSTALL, '安装部署'),
+    (PROBLEM_TYPE_COMPLAINT, '投诉'),
 ]
 
-# 原因分类常量
-REASON_TYPE_BUG = 'bug'
-REASON_TYPE_ENV = 'env'
-REASON_TYPE_PROCESS = 'process'
-REASON_TYPE_CONSULT = 'consult'
+# 服务模式常量
+SERVICE_MODE_REMOTE = 'remote'
+SERVICE_MODE_ONSITE = 'onsite'
 
-REASON_TYPE_CHOICES = [
-    (REASON_TYPE_BUG, '缺陷bug'),
-    (REASON_TYPE_ENV, '客户环境问题'),
-    (REASON_TYPE_PROCESS, '流程问题'),
-    (REASON_TYPE_CONSULT, '客户咨询'),
+SERVICE_MODE_CHOICES = [
+    (SERVICE_MODE_REMOTE, '远程'),
+    (SERVICE_MODE_ONSITE, '现场'),
 ]
 
-# 售后运维客户原因分类常量（不含客户咨询）
-OPERATIONS_REASON_TYPE_CHOICES = [
-    (REASON_TYPE_BUG, '缺陷bug'),
-    (REASON_TYPE_ENV, '客户环境问题'),
-    (REASON_TYPE_PROCESS, '流程问题'),
-]
+# 是否关单常量
+IS_CLOSED_YES = 'yes'
+IS_CLOSED_NO = 'no'
 
-# 是否解决常量
-IS_SOLVED_YES = 'yes'
-IS_SOLVED_NO = 'no'
-
-IS_SOLVED_CHOICES = [
-    (IS_SOLVED_YES, '是'),
-    (IS_SOLVED_NO, '否'),
+IS_CLOSED_CHOICES = [
+    (IS_CLOSED_YES, '是'),
+    (IS_CLOSED_NO, '否'),
 ]
 
 # 项目状态常量
@@ -256,6 +247,7 @@ PROCESS_ENV_CHOICES = [
 
 class Customer(models.Model):
     """客户模型"""
+    customer_id = models.CharField(max_length=50, unique=True, default='', verbose_name='客户id')
     name = models.CharField(max_length=255, verbose_name='客户名称')
     customer_type = models.CharField(
         max_length=20,
@@ -284,6 +276,42 @@ class Customer(models.Model):
     
     def __str__(self):
         return self.name
+    
+    def save(self, *args, **kwargs):
+        # 自动生成客户ID
+        if not self.customer_id:
+            # 生成五位数顺序编号，从00001开始
+            try:
+                # 获取所有客户ID
+                customer_ids = Customer.objects.values_list('customer_id', flat=True)
+                # 过滤出五位数数字格式的客户ID并转换为整数
+                numeric_ids = []
+                for cid in customer_ids:
+                    try:
+                        # 只考虑五位数的客户ID
+                        if len(cid) == 5 and cid.isdigit():
+                            numeric_ids.append(int(cid))
+                    except (ValueError, TypeError):
+                        pass
+                # 找出最大的五位数客户ID
+                if numeric_ids:
+                    max_id = max(numeric_ids)
+                    next_id = max_id + 1
+                    # 确保不超过99999
+                    if next_id > 99999:
+                        raise ValueError('客户ID已达到最大值99999')
+                else:
+                    next_id = 1
+                # 格式化为五位数，前导零
+                self.customer_id = f'{next_id:05d}'
+            except Exception as e:
+                # 如果出现任何错误，使用默认值1
+                self.customer_id = '00001'
+                # 确保客户ID唯一
+                while Customer.objects.filter(customer_id=self.customer_id).exists():
+                    import random
+                    self.customer_id = f'{random.randint(1, 99999):05d}'
+        super().save(*args, **kwargs)
 
 class CustomerTypeChangeLog(models.Model):
     """客户类型变更日志"""
@@ -354,26 +382,29 @@ class Problem(models.Model):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, verbose_name='客户')
     title = models.CharField(max_length=255, verbose_name='问题标题')
     description = models.TextField(verbose_name='问题描述')
-    screenshot = models.FileField(upload_to='image', blank=True, verbose_name='问题截图')
-    occurrence_time = models.DateTimeField(null=True, blank=True, verbose_name='出现时间')
-    status = models.CharField(
+    problem_type = models.CharField(
         max_length=20,
-        choices=PROBLEM_STATUS_CHOICES,
-        default=PROBLEM_STATUS_PENDING,
-        verbose_name='状态'
+        choices=PROBLEM_TYPE_CHOICES,
+        default=PROBLEM_TYPE_PROCESS,
+        verbose_name='问题类型'
     )
-    problem_reason = models.TextField(blank=True, verbose_name='问题原因')
-    reason_type = models.CharField(
+    service_mode = models.CharField(
         max_length=20,
-        choices=REASON_TYPE_CHOICES,
-        blank=True,
-        verbose_name='原因分类'
+        choices=SERVICE_MODE_CHOICES,
+        default=SERVICE_MODE_REMOTE,
+        verbose_name='服务模式'
     )
-    solution = models.TextField(blank=True, verbose_name='解决方案')
-    solve_time = models.DateTimeField(null=True, blank=True, verbose_name='解决时间')
     handler = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='处理人')
     man_days = models.DecimalField(max_digits=5, decimal_places=1, null=True, blank=True, verbose_name='人天')
     related_process = models.ForeignKey(Process, on_delete=models.SET_NULL, null=True, blank=True, verbose_name='关联流程')
+    is_closed = models.CharField(
+        max_length=20,
+        choices=IS_CLOSED_CHOICES,
+        default=IS_CLOSED_NO,
+        verbose_name='是否关单'
+    )
+    close_time = models.DateTimeField(null=True, blank=True, verbose_name='关单时间')
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name='创建时间')
     
     class Meta:
         verbose_name = '问题记录'

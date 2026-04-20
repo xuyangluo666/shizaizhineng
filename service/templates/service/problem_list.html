@@ -3,36 +3,31 @@
 {% block content %}
 <div class="container">
     <h1>{{ customer.name }} - {% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</h1>
-    <div class="row mb-3">
-        <div class="col-md-3">
-            <a href="{% url 'service:problem_create' customer.id %}" class="btn btn-success w-100">新增{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</a>
-        </div>
-        <div class="col-md-3">
-            <a href="{% url 'service:problem_import' customer.id %}" class="btn btn-info w-100">导入</a>
-        </div>
-        <div class="col-md-3">
-            <a href="{% url 'service:problem_export' %}?customer_id={{ customer.id }}" class="btn btn-info w-100">导出{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</a>
-        </div>
-    </div>
     <form method="get" class="form-inline mb-3">
-        <select name="status" class="form-control mr-2" style="height: 60px;">
+        <select name="is_closed" class="form-control mr-2" style="height: 60px; min-width: 120px;">
             <option value="">全部状态</option>
-            <option value="pending" {% if request.GET.status == 'pending' %}selected{% endif %}>待处理</option>
-            <option value="processing" {% if request.GET.status == 'processing' %}selected{% endif %}>处理中</option>
-            <option value="completed" {% if request.GET.status == 'completed' %}selected{% endif %}>已完成</option>
+            <option value="yes" {% if request.GET.is_closed == 'yes' %}selected{% endif %}>已关单</option>
+            <option value="no" {% if request.GET.is_closed == 'no' %}selected{% endif %}>未关单</option>
         </select>
         <input type="text" name="submitter" placeholder="提交人" class="form-control mr-2" value="{{ request.GET.submitter }}">
         <input type="date" name="start_date" class="form-control mr-2" value="{{ request.GET.start_date }}">
         <input type="date" name="end_date" class="form-control mr-2" value="{{ request.GET.end_date }}">
         {% if customer.customer_type == 'operations' %}
-        <select name="related_process" class="form-control mr-2" style="height: 60px;">
+        <select name="related_process" class="form-control mr-2" style="height: 60px; min-width: 150px;">
             <option value="">全部流程</option>
             {% for process in processes %}
             <option value="{{ process.id }}" {% if request.GET.related_process == process.id|stringformat:'s' %}selected{% endif %}>{{ process.name }}</option>
             {% endfor %}
         </select>
         {% endif %}
-        <button type="submit" class="btn btn-primary">筛选</button>
+        <button type="submit" class="btn btn-primary mr-2">筛选</button>
+        <div class="ml-auto">
+            <button type="button" class="btn btn-success mr-2" data-toggle="modal" data-target="#createProblemModal">新增</button>
+            <a href="{% url 'service:problem_import' customer.id %}" class="btn btn-info mr-2">导入</a>
+            <a href="{% url 'service:problem_export' %}?customer_id={{ customer.id }}" class="btn btn-info mr-2">导出</a>
+            <button type="button" class="btn btn-danger mr-2" id="batchDeleteBtn">批量删除</button>
+            <a href="{% url 'service:customer_detail' customer.id %}" class="btn btn-secondary">返回客户详情</a>
+        </div>
     </form>
     <form method="post" action="{% url 'service:problem_batch_delete' %}" id="batch-delete-form">
         {% csrf_token %}
@@ -42,18 +37,16 @@
                     <th><input type="checkbox" id="select-all"></th>
                     <th>{% if customer.customer_type == 'operations' %}运维标题{% else %}问题标题{% endif %}</th>
                     <th>问题描述</th>
-                    <th>问题截图</th>
-                    <th>出现时间</th>
-                    <th>状态</th>
-                    <th>问题原因</th>
-                    <th>原因分类</th>
-                    <th>解决方案</th>
-                    <th>解决时间</th>
+                    <th>问题类型</th>
+                    <th>服务模式</th>
                     <th>处理人</th>
                     {% if customer.customer_type == 'operations' %}
                     <th>关联流程</th>
                     <th>人天</th>
                     {% endif %}
+                    <th>是否关单</th>
+                    <th>关单时间</th>
+                    <th>创建时间</th>
                     <th>操作</th>
                 </tr>
             </thead>
@@ -71,42 +64,16 @@
                             </div>
                         </div>
                     </td>
-                    <td>
-                        {% if problem.screenshot %}
-                            <a href="{{ problem.screenshot.url }}" target="_blank" class="text-info" title="点击查看截图">
-                                <i class="fas fa-image"></i> 查看
-                            </a>
-                        {% else %}
-                            <span class="text-muted">无</span>
-                        {% endif %}
-                    </td>
-                    <td>{{ problem.occurrence_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
-                    <td>{{ problem.get_status_display }}</td>
-                    <td>
-                        <div class="text-truncate position-relative" style="max-width: 150px; height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
-                            {{ problem.problem_reason|default:"无" }}
-                            <div class="tooltip-text" style="visibility: hidden; width: 300px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 0; opacity: 0; transition: opacity 0.1s, visibility 0.1s; font-size: 14px; line-height: 1.4;">
-                                {{ problem.problem_reason|default:"无" }}
-                                <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
-                            </div>
-                        </div>
-                    </td>
-                    <td>{{ problem.get_reason_type_display|default:"无" }}</td>
-                    <td>
-                        <div class="text-truncate position-relative" style="max-width: 150px; height: 1.2em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; cursor: help;">
-                            {{ problem.solution|default:"无" }}
-                            <div class="tooltip-text" style="visibility: hidden; width: 300px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1; bottom: 125%; left: 0; opacity: 0; transition: opacity 0.1s, visibility 0.1s; font-size: 14px; line-height: 1.4;">
-                                {{ problem.solution|default:"无" }}
-                                <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
-                            </div>
-                        </div>
-                    </td>
-                    <td>{{ problem.solve_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
+                    <td>{{ problem.get_problem_type_display }}</td>
+                    <td>{{ problem.get_service_mode_display }}</td>
                     <td>{{ problem.handler.username|default:"无" }}</td>
                     {% if customer.customer_type == 'operations' %}
                     <td>{{ problem.related_process.name|default:"无" }}</td>
                     <td>{{ problem.man_days|default:"无" }}</td>
                     {% endif %}
+                    <td>{{ problem.get_is_closed_display }}</td>
+                    <td>{{ problem.close_time|date:"Y-m-d H:i:s"|default:"无" }}</td>
+                    <td>{{ problem.created_at|date:"Y-m-d H:i:s"|default:"无" }}</td>
                     <td>
                         <a href="{% url 'service:problem_update' problem.id %}" class="btn btn-sm btn-warning">编辑</a>
                         <a href="{% url 'service:problem_delete' problem.id %}" class="btn btn-sm btn-danger">删除</a>
@@ -115,9 +82,6 @@
                 {% endfor %}
             </tbody>
         </table>
-        <div class="mt-3">
-            <button type="button" class="btn btn-danger" onclick="confirmBatchDelete()">批量删除{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</button>
-        </div>
     </form>
     <div class="pagination">
         <span class="step-links">
@@ -136,7 +100,89 @@
             {% endif %}
         </span>
     </div>
-    <a href="{% url 'service:customer_detail' customer.id %}" class="btn btn-secondary mt-3">返回客户详情</a>
+
+<!-- 新增问题记录模态窗 -->
+<div class="modal fade" id="createProblemModal" tabindex="-1" role="dialog" aria-labelledby="createProblemModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="createProblemModalLabel">新增{% if customer.customer_type == 'operations' %}运维记录{% else %}问题记录{% endif %}</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <form id="createProblemForm" method="post">
+                {% csrf_token %}
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="createProblemTitle">{% if customer.customer_type == 'operations' %}运维标题{% else %}问题标题{% endif %}</label>
+                        <input type="text" class="form-control" id="createProblemTitle" name="title" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="createProblemDescription">问题描述</label>
+                        <textarea class="form-control" id="createProblemDescription" name="description" rows="4" required></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label for="createProblemType">问题类型</label>
+                        <select class="form-control" id="createProblemType" name="problem_type" required style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="process">流程问题</option>
+                            <option value="software">软件问题</option>
+                            <option value="install">安装部署</option>
+                            <option value="complaint">投诉</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="createServiceMode">服务模式</label>
+                        <select class="form-control" id="createServiceMode" name="service_mode" required style="height: 60px">
+                            <option value="">请选择</option>
+                            <option value="remote">远程</option>
+                            <option value="onsite">现场</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="createHandler">处理人</label>
+                        <select class="form-control" id="createHandler" name="handler" required style="height: 60px">
+                            <option value="">请选择</option>
+                            {% for user in users %}
+                            <option value="{{ user.id }}">{{ user.username }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% if customer.customer_type == 'operations' %}
+                    <div class="form-group">
+                        <label for="createManDays">人天</label>
+                        <input type="number" class="form-control" id="createManDays" name="man_days" step="0.1" min="0">
+                    </div>
+                    <div class="form-group">
+                        <label for="createRelatedProcess">流程名称</label>
+                        <select class="form-control" id="createRelatedProcess" name="related_process" style="height: 60px">
+                            <option value="">请选择</option>
+                            {% for process in processes %}
+                            <option value="{{ process.id }}">{{ process.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    {% endif %}
+                    <div class="form-group">
+                        <label for="createIsClosed">是否关单</label>
+                        <select class="form-control" id="createIsClosed" name="is_closed" required style="height: 60px">
+                            <option value="no">否</option>
+                            <option value="yes">是</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="createCloseTime">关单时间</label>
+                        <input type="datetime-local" class="form-control" id="createCloseTime" name="close_time">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
+                    <button type="submit" class="btn btn-primary">保存</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -147,17 +193,19 @@
 </style>
 
 <script>
+// 确保DOM加载完成
+$(function() {
+    console.log('DOM loaded, binding events...');
+    
     // 全选/取消全选
-    document.getElementById('select-all').addEventListener('change', function() {
-        var checkboxes = document.querySelectorAll('input[name="problem_ids"]');
-        checkboxes.forEach(function(checkbox) {
-            checkbox.checked = this.checked;
-        }.bind(this));
+    $('#select-all').change(function() {
+        var checkboxes = $('input[name="problem_ids"]');
+        checkboxes.prop('checked', $(this).prop('checked'));
     });
     
-    // 批量删除确认
-    function confirmBatchDelete() {
-        var checkboxes = document.querySelectorAll('input[name="problem_ids"]:checked');
+    // 批量删除按钮点击事件
+    $('#batchDeleteBtn').click(function() {
+        var checkboxes = $('input[name="problem_ids"]:checked');
         var selectedCount = checkboxes.length;
         
         if (selectedCount === 0) {
@@ -167,8 +215,89 @@
         
         var message = selectedCount === 1 ? '确定要删除1个问题吗？' : `确定要删除${selectedCount}个问题吗？`;
         if (confirm(message)) {
-            document.getElementById('batch-delete-form').submit();
+            $('#batch-delete-form').submit();
+        }
+    });
+    
+    // 新增问题记录表单提交事件
+    $('#createProblemForm').submit(function(e) {
+        e.preventDefault();
+        
+        var formData = $(this).serialize();
+        
+        console.log('Creating new problem...');
+        
+        $.ajax({
+            url: "{% url 'service:problem_create' customer.id %}",
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                console.log('Creation successful');
+                // 关闭模态框
+                $('#createProblemModal').modal('hide');
+                
+                // 刷新页面
+                location.reload();
+            },
+            error: function(xhr) {
+                alert('创建失败，请重试');
+                console.log('Creation error:', xhr.responseText);
+            }
+        });
+    });
+    
+    // 新增问题记录模态窗中的是否关单字段处理
+    $('#createIsClosed').change(function() {
+        var isClosed = $(this).val();
+        var closeTimeField = $('#createCloseTime');
+        
+        if (isClosed === 'yes') {
+            // 如果是关单，自动填充当前时间
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var day = String(now.getDate()).padStart(2, '0');
+            var hours = String(now.getHours()).padStart(2, '0');
+            var minutes = String(now.getMinutes()).padStart(2, '0');
+            var seconds = String(now.getSeconds()).padStart(2, '0');
+            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            closeTimeField.val(formattedDateTime);
+            closeTimeField.prop('disabled', false);
+        } else {
+            // 如果不是关单，清空关单时间并禁用
+            closeTimeField.val('');
+            closeTimeField.prop('disabled', true);
+        }
+    });
+    
+    // 初始化新增问题记录模态窗中的关单时间字段状态
+    function initCreateProblemModal() {
+        var isClosed = $('#createIsClosed').val();
+        var closeTimeField = $('#createCloseTime');
+        
+        if (isClosed === 'yes') {
+            // 如果是关单，自动填充当前时间
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var day = String(now.getDate()).padStart(2, '0');
+            var hours = String(now.getHours()).padStart(2, '0');
+            var minutes = String(now.getMinutes()).padStart(2, '0');
+            var seconds = String(now.getSeconds()).padStart(2, '0');
+            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            closeTimeField.val(formattedDateTime);
+            closeTimeField.prop('disabled', false);
+        } else {
+            // 如果不是关单，清空关单时间并禁用
+            closeTimeField.val('');
+            closeTimeField.prop('disabled', true);
         }
     }
+    
+    // 当模态窗显示时初始化
+    $('#createProblemModal').on('show.bs.modal', function() {
+        initCreateProblemModal();
+    });
+});
 </script>
 {% endblock %}

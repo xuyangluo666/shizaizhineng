@@ -10,6 +10,7 @@ urlpatterns = [
     path('customers/create/', views.CustomerCreateView.as_view(), name='customer_create'),
     path('customers/<int:pk>/update/', views.CustomerUpdateView.as_view(), name='customer_update'),
     path('customers/<int:pk>/delete/', views.CustomerDeleteView.as_view(), name='customer_delete'),
+    path('customers/batch-delete/', views.CustomerBatchDeleteView.as_view(), name='customer_batch_delete'),
     path('customers/<int:pk>/change-type/', views.CustomerTypeChangeView.as_view(), name='customer_change_type'),
     
     # 问题记录管理
@@ -22,7 +23,6 @@ urlpatterns = [
     path('problems/export/', views.ProblemExportView.as_view(), name='problem_export'),
     
     # 项目管理
-    path('customers/<int:customer_id>/projects/', views.ProjectListView.as_view(), name='project_list'),
     path('projects/create/<int:customer_id>/', views.ProjectCreateView.as_view(), name='project_create'),
     path('projects/<int:pk>/update/', views.ProjectUpdateView.as_view(), name='project_update'),
     path('projects/<int:pk>/delete/', views.ProjectDeleteView.as_view(), name='project_delete'),

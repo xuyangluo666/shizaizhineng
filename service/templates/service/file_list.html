@@ -8,7 +8,7 @@
             <a href="{% url 'service:file_create' project.id %}" class="btn btn-success">上传文件</a>
         </div>
         <div class="col-md-6 text-right">
-            <a href="{% url 'service:project_list' project.customer.id %}" class="btn btn-secondary">返回项目列表</a>
+            <a href="{% url 'service:customer_detail' project.customer.id %}" class="btn btn-secondary">返回客户详情</a>
         </div>
     </div>
     <table class="table table-striped">

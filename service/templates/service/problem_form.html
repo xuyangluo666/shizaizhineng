@@ -31,57 +31,40 @@
             </div>
             
             <div class="form-group mb-4">
-                <label for="id_screenshot" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}问题截图{% else %}问题截图{% endif %}</label>
-                {{ form.screenshot }}
-                <small class="form-text text-muted">可以直接复制粘贴图片，或点击选择文件</small>
-                <div id="screenshot-preview" class="mt-3"></div>
+                <label for="id_problem_type" class="form-label font-weight-bold">问题类型</label>
+                <div style="min-width: 200px;">{{ form.problem_type }}</div>
             </div>
             
             <div class="form-group mb-4">
-                <label for="id_occurrence_time" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}出现时间{% else %}出现时间{% endif %}</label>
-                {{ form.occurrence_time }}
+                <label for="id_service_mode" class="form-label font-weight-bold">服务模式</label>
+                <div style="min-width: 200px;">{{ form.service_mode }}</div>
             </div>
             
             <div class="form-group mb-4">
-                <label for="id_status" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}状态{% else %}状态{% endif %}</label>
-                {{ form.status }}
-            </div>
-            
-            <div class="form-group mb-4">
-                <label for="id_problem_reason" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}问题原因{% else %}问题原因{% endif %}</label>
-                {{ form.problem_reason }}
-            </div>
-            
-            <div class="form-group mb-4">
-                <label for="id_reason_type" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}原因分类{% else %}原因分类{% endif %}</label>
-                {{ form.reason_type }}
-            </div>
-            
-            <div class="form-group mb-4">
-                <label for="id_solution" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}解决方案{% else %}解决方案{% endif %}</label>
-                {{ form.solution }}
-            </div>
-            
-            <div class="form-group mb-4">
-                <label for="id_solve_time" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}解决时间{% else %}解决时间{% endif %}</label>
-                {{ form.solve_time }}
-            </div>
-            
-            <div class="form-group mb-4">
-                <label for="id_handler" class="form-label font-weight-bold">{% if customer.customer_type == 'operations' %}问题处理人{% else %}问题处理人{% endif %}</label>
-                {{ form.handler }}
+                <label for="id_handler" class="form-label font-weight-bold">处理人</label>
+                <div style="min-width: 200px;">{{ form.handler }}</div>
             </div>
             
             {% if customer.customer_type == 'operations' %}
             <div class="form-group mb-4">
                 <label for="id_man_days" class="form-label font-weight-bold">人天</label>
-                {{ form.man_days }}
+                <div style="min-width: 200px;">{{ form.man_days }}</div>
             </div>
             <div class="form-group mb-4">
                 <label for="id_related_process" class="form-label font-weight-bold">流程名称</label>
-                {{ form.related_process }}
+                <div style="min-width: 200px;">{{ form.related_process }}</div>
             </div>
             {% endif %}
+            
+            <div class="form-group mb-4">
+                <label for="id_is_closed" class="form-label font-weight-bold">是否关单</label>
+                <div style="min-width: 200px;">{{ form.is_closed }}</div>
+            </div>
+            
+            <div class="form-group mb-4">
+                <label for="id_close_time" class="form-label font-weight-bold">关单时间</label>
+                {{ form.close_time }}
+            </div>
             
             <div class="d-flex justify-content-center gap-4 mt-5">
                 <button type="submit" class="btn btn-primary btn-lg px-5">保存</button>
@@ -93,7 +76,7 @@
 
 <script>
     // 查找所有日期时间字段并将其类型改为datetime-local
-    var dateTimeFields = ['id_occurrence_time', 'id_solve_time'];
+    var dateTimeFields = ['id_close_time'];
     dateTimeFields.forEach(function(fieldId) {
         var field = document.getElementById(fieldId);
         if (field) {
@@ -102,7 +85,7 @@
     });
     
     // 为文本域添加样式
-    var textAreas = ['id_description', 'id_problem_reason', 'id_solution'];
+    var textAreas = ['id_description'];
     textAreas.forEach(function(fieldId) {
         var field = document.getElementById(fieldId);
         if (field) {
@@ -117,90 +100,35 @@
         field.classList.add('form-control');
     });
     
-    // 实现复制粘贴图片功能
-    document.addEventListener('paste', function(e) {
-        // 检查是否粘贴了图片
-        if (e.clipboardData && e.clipboardData.items) {
-            for (var i = 0; i < e.clipboardData.items.length; i++) {
-                var item = e.clipboardData.items[i];
-                if (item.type.indexOf('image') !== -1) {
-                    var file = item.getAsFile();
-                    if (file) {
-                        // 设置到文件输入框
-                        var screenshotInput = document.getElementById('id_screenshot');
-                        var dataTransfer = new DataTransfer();
-                        dataTransfer.items.add(file);
-                        screenshotInput.files = dataTransfer.files;
-                        
-                        // 显示预览
-                        var previewDiv = document.getElementById('screenshot-preview');
-                        previewDiv.innerHTML = '';
-                        var img = document.createElement('img');
-                        img.src = URL.createObjectURL(file);
-                        img.style.maxWidth = '100%';
-                        img.style.maxHeight = '200px';
-                        previewDiv.appendChild(img);
-                    }
-                }
-            }
-        }
-    });
+    // 是否关单字段的change事件处理
+    var isClosedField = document.getElementById('id_is_closed');
+    var closeTimeField = document.getElementById('id_close_time');
     
-    // 文件输入变化时显示预览
-    document.getElementById('id_screenshot').addEventListener('change', function(e) {
-        var file = e.target.files[0];
-        if (file) {
-            var previewDiv = document.getElementById('screenshot-preview');
-            previewDiv.innerHTML = '';
-            var img = document.createElement('img');
-            img.src = URL.createObjectURL(file);
-            img.style.maxWidth = '100%';
-            img.style.maxHeight = '200px';
-            previewDiv.appendChild(img);
+    // 初始化状态
+    function updateCloseTimeField() {
+        if (isClosedField.value === 'yes') {
+            // 如果是关单，自动填充当前时间
+            var now = new Date();
+            var year = now.getFullYear();
+            var month = String(now.getMonth() + 1).padStart(2, '0');
+            var day = String(now.getDate()).padStart(2, '0');
+            var hours = String(now.getHours()).padStart(2, '0');
+            var minutes = String(now.getMinutes()).padStart(2, '0');
+            var seconds = String(now.getSeconds()).padStart(2, '0');
+            var formattedDateTime = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+            closeTimeField.value = formattedDateTime;
+            closeTimeField.disabled = false;
+        } else {
+            // 如果不是关单，清空关单时间并禁用
+            closeTimeField.value = '';
+            closeTimeField.disabled = true;
         }
-    });
+    }
     
-    // 根据客户类型设置原因分类选项
-    document.addEventListener('DOMContentLoaded', function() {
-        var reasonTypeSelect = document.getElementById('id_reason_type');
-        var customerType = '{{ customer.customer_type }}';
-        
-        if (reasonTypeSelect) {
-            // 清空现有选项
-            reasonTypeSelect.innerHTML = '';
-            
-            // 添加默认选项
-            var defaultOption = document.createElement('option');
-            defaultOption.value = '';
-            defaultOption.text = '请选择';
-            reasonTypeSelect.appendChild(defaultOption);
-            
-            // 根据客户类型添加不同的选项
-            if (customerType === 'operations') {
-                // 售后运维客户：缺陷bug、客户环境问题、流程问题
-                var options = [
-                    { value: 'bug', text: '缺陷bug' },
-                    { value: 'env', text: '客户环境问题' },
-                    { value: 'process', text: '流程问题' }
-                ];
-            } else {
-                // 其他客户：缺陷bug、客户环境问题、流程问题、客户咨询
-                var options = [
-                    { value: 'bug', text: '缺陷bug' },
-                    { value: 'env', text: '客户环境问题' },
-                    { value: 'process', text: '流程问题' },
-                    { value: 'consult', text: '客户咨询' }
-                ];
-            }
-            
-            // 添加选项
-            options.forEach(function(option) {
-                var opt = document.createElement('option');
-                opt.value = option.value;
-                opt.text = option.text;
-                reasonTypeSelect.appendChild(opt);
-            });
-        }
-    });
+    // 初始调用
+    updateCloseTimeField();
+    
+    // 添加事件监听器
+    isClosedField.addEventListener('change', updateCloseTimeField);
 </script>
 {% endblock %}
