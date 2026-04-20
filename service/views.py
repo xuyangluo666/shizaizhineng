@@ -1441,13 +1441,13 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
     
     def get(self, request):
         # 检查是否是模板下载请求
-        if request.GET.get('action') == 'download_template':
-            template_path = 'service/templates/service/customer_import_template.xlsx'
-            filename = '客户导入模板.xlsx'
+            if request.GET.get('action') == 'download_template':
+                template_path = 'service/templates/service/customer_import_template.csv'
+                filename = '客户导入模板.csv'
             
             try:
                 with open(template_path, 'rb') as f:
-                    response = HttpResponse(f.read(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+                    response = HttpResponse(f.read(), content_type='text/csv')
                     response['Content-Disposition'] = f'attachment; filename={filename}'
                     return response
             except FileNotFoundError:
