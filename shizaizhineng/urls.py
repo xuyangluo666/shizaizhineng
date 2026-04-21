@@ -28,7 +28,11 @@ urlpatterns = [
 ]
 
 # Add media files URL
-urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+from service.views import media_file_server
+urlpatterns += [
+    path('media/<path:path>', media_file_server, name='media_file_server'),
+]
+# urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 # Add static files URL for production
 from django.contrib.staticfiles.urls import staticfiles_urlpatterns

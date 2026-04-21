@@ -2493,3 +2493,35 @@ def download_attachment(request, problem_id, attachment_id):
     
     return response
 
+# 媒体文件服务视图
+from django.views.decorators.csrf import csrf_exempt
+
+@csrf_exempt
+def media_file_server(request, path):
+    """自定义媒体文件服务视图"""
+    import os
+    from django.conf import settings
+    from django.http import FileResponse, Http404
+    
+    # 构建完整的文件路径
+    file_path = os.path.join(settings.MEDIA_ROOT, path)
+    
+    # 检查文件是否存在
+    if not os.path.exists(file_path):
+        raise Http404("文件不存在")
+    
+    # 检查是否是文件
+    if not os.path.isfile(file_path):
+        raise Http404("路径不是文件")
+    
+    # 打开文件并返回
+    response = FileResponse(open(file_path, 'rb'))
+    
+    # 根据文件扩展名设置Content-Type
+    import mimetypes
+    content_type, _ = mimetypes.guess_type(file_path)
+    if content_type:
+        response['Content-Type'] = content_type
+    
+    return response
+
