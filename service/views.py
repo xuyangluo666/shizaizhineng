@@ -1993,6 +1993,10 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
         
         # 检查是否是图片
         is_image = attachment.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp']
+        # 确保file_path使用正斜杠
+        clean_file_path = file_path.replace('\\', '/')
+        # 生成可访问的URL
+        file_url = f'/media/{clean_file_path}'
         
         logger.info("附件上传成功")
         return JsonResponse({
@@ -2002,10 +2006,40 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
                 'id': attachment.id,
                 'name': attachment.name,
                 'file_type': attachment.file_type,
-                'file_path': attachment.file_path,
+                'file_path': clean_file_path,
+                'file_url': file_url,
+                'upload_time': attachment.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_image': is_image,
+                'uploader': request.user.username
+            }
+        })
+    
+    def get(self, request, problem_id):
+        """获取问题记录的附件列表"""
+        problem = get_object_or_404(Problem, id=problem_id)
+        attachments = problem.attachments.all()
+        
+        attachment_list = []
+        for attachment in attachments:
+            is_image = attachment.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp']
+            # 确保file_path使用正斜杠
+            clean_file_path = attachment.file_path.replace('\\', '/')
+            # 生成可访问的URL
+            file_url = f'/media/{clean_file_path}'
+            
+            attachment_list.append({
+                'id': attachment.id,
+                'name': attachment.name,
+                'file_type': attachment.file_type,
+                'file_path': clean_file_path,
+                'file_url': file_url,
                 'upload_time': attachment.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
                 'is_image': is_image
-            }
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'attachments': attachment_list
         })
     
     def delete(self, request, problem_id, attachment_id):
@@ -2014,7 +2048,7 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
         attachment = get_object_or_404(ProblemAttachment, id=attachment_id, problem=problem)
         
         # 删除文件
-        full_file_path = os.path.join(settings.MEDIA_ROOT, attachment.file_path)
+        full_file_path = os.path.join(settings.MEDIA_ROOT, attachment.file_path.replace('\\', '/'))
         if os.path.exists(full_file_path):
             try:
                 os.remove(full_file_path)
@@ -2026,27 +2060,29 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
         
         return JsonResponse({'success': True, 'message': '附件删除成功'})
     
-    def get(self, request, problem_id):
-        """获取问题记录的附件列表"""
+    def download_attachment(self, request, problem_id, attachment_id):
+        """下载附件"""
+        import mimetypes
+        from django.http import FileResponse
+        
         problem = get_object_or_404(Problem, id=problem_id)
-        attachments = problem.attachments.all()
+        attachment = get_object_or_404(ProblemAttachment, id=attachment_id, problem=problem)
         
-        attachment_list = []
-        for attachment in attachments:
-            is_image = attachment.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp']
-            attachment_list.append({
-                'id': attachment.id,
-                'name': attachment.name,
-                'file_type': attachment.file_type,
-                'file_path': attachment.file_path,
-                'upload_time': attachment.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
-                'is_image': is_image
-            })
+        # 构建完整的文件路径
+        file_path = os.path.join(settings.MEDIA_ROOT, attachment.file_path.replace('\\', '/'))
         
-        return JsonResponse({
-            'success': True,
-            'attachments': attachment_list
-        })
+        if not os.path.exists(file_path):
+            return JsonResponse({'success': False, 'message': '文件不存在'}, status=404)
+        
+        # 打开文件并返回
+        response = FileResponse(open(file_path, 'rb'))
+        response['Content-Type'] = 'application/octet-stream'
+        # 使用URL编码确保文件名正确传输
+        filename = attachment.name
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        
+        return response
+        
 
 # 根路径重定向视图
 def root_redirect(request):
@@ -2432,3 +2468,28 @@ class OpportunityExportView(LoginRequiredMixin, View):
         )
         response['Content-Disposition'] = 'attachment; filename="opportunities.xlsx"'
         return response
+
+# 下载附件的视图函数
+from django.contrib.auth.decorators import login_required
+
+@login_required
+def download_attachment(request, problem_id, attachment_id):
+    """下载附件"""
+    problem = get_object_or_404(Problem, id=problem_id)
+    attachment = get_object_or_404(ProblemAttachment, id=attachment_id, problem=problem)
+    
+    # 构建完整的文件路径
+    file_path = os.path.join(settings.MEDIA_ROOT, attachment.file_path.replace('\\', '/'))
+    
+    if not os.path.exists(file_path):
+        return JsonResponse({'success': False, 'message': '文件不存在'}, status=404)
+    
+    # 打开文件并返回
+    response = FileResponse(open(file_path, 'rb'))
+    response['Content-Type'] = 'application/octet-stream'
+    # 使用URL编码确保文件名正确传输
+    filename = attachment.name
+    response['Content-Disposition'] = f'attachment; filename="{filename}"'
+    
+    return response
+
