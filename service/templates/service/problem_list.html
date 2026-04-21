@@ -87,7 +87,7 @@
                         <button class="btn btn-sm btn-danger delete-problem-btn" data-id="{{ problem.id }}" data-title="{{ problem.title }}">删除</button>
                         <div class="position-relative d-inline-block">
                             {% if problem.attachments.count > 0 %}
-                            <button class="btn btn-sm btn-info attachment-btn" data-id="{{ problem.id }}" title="查看附件" onclick="event.stopPropagation(); event.preventDefault();">
+                            <button class="btn btn-sm btn-info attachment-btn" data-id="{{ problem.id }}" title="查看附件">
                                 <i class="fas fa-paperclip"></i>
                                 <span class="badge badge-light">{{ problem.attachments.count }}</span>
                             </button>
@@ -109,7 +109,7 @@
                                 <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
                             </div>
                             {% else %}
-                            <button class="btn btn-sm btn-outline-info attachment-btn" data-id="{{ problem.id }}" title="添加附件" onclick="event.stopPropagation(); event.preventDefault();">
+                            <button class="btn btn-sm btn-outline-info attachment-btn" data-id="{{ problem.id }}" title="添加附件">
                                 <i class="fas fa-paperclip"></i>
                             </button>
                             {% endif %}
