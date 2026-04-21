@@ -823,9 +823,12 @@ $(function() {
     // 上传文件
     function uploadFiles(files) {
         var problemId = $('#currentProblemId').val();
+        console.log('Uploading files:', files);
+        console.log('Problem ID:', problemId);
         
         for (var i = 0; i < files.length; i++) {
             var file = files[i];
+            console.log('Uploading file:', file.name);
             var formData = new FormData();
             formData.append('file', file);
             
@@ -839,13 +842,18 @@ $(function() {
                     'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
                 },
                 success: function(response) {
+                    console.log('Upload response:', response);
                     if (response.success) {
+                        alert('文件上传成功');
                         // 重新加载附件列表
                         loadAttachments(problemId);
+                    } else {
+                        alert('上传失败: ' + response.message);
                     }
                 },
                 error: function(xhr) {
-                    console.log('Error uploading file:', xhr.responseText);
+                    console.log('Error uploading file:', xhr.status, xhr.responseText);
+                    alert('上传失败，请检查控制台日志');
                 }
             });
         }
