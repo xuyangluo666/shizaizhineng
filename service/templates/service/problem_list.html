@@ -664,7 +664,9 @@ $(function() {
     });
 
     // 附件按钮点击事件
-    $(document).on('click', '.attachment-btn', function() {
+    $(document).on('click', '.attachment-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         var problemId = $(this).data('id');
         $('#currentProblemId').val(problemId);
         
