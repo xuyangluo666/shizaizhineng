@@ -1943,8 +1943,8 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
         logger.info(f"收到文件: {file.name}, 大小: {file.size}")
         
         # 创建上传目录
-        upload_dir = os.path.join('problem_attachments', str(problem_id))
-        full_upload_dir = os.path.join(settings.MEDIA_ROOT, upload_dir)
+        upload_dir = f'problem_attachments/{problem_id}'
+        full_upload_dir = os.path.join(settings.MEDIA_ROOT, 'problem_attachments', str(problem_id))
         logger.info(f"上传目录: {full_upload_dir}")
         
         try:
@@ -1957,7 +1957,7 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
         # 生成唯一文件名
         file_name = f"{timezone.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
         # 使用正斜杠作为路径分隔符，确保前端URL正确
-        file_path = upload_dir + '/' + file_name
+        file_path = f'{upload_dir}/{file_name}'
         full_file_path = os.path.join(full_upload_dir, file_name)
         logger.info(f"保存路径: {full_file_path}")
         
