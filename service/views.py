@@ -21,7 +21,7 @@ import io
 import os
 from .models import (
     CustomUser, Customer, CustomerTypeChangeLog, Problem, TrialCustomer,
-    Project, File, Process, OperationLog, Opportunity,
+    Project, File, Process, OperationLog, Opportunity, ProblemAttachment,
     CUSTOMER_TYPE_TRIAL, CUSTOMER_TYPE_SELF_DEVELOP, CUSTOMER_TYPE_OPERATIONS,
     CUSTOMER_STATUS_NORMAL, CUSTOMER_STATUS_ABNORMAL, CUSTOMER_STATUS_LOST,
     CUSTOMER_LEVEL_A, CUSTOMER_LEVEL_B, CUSTOMER_LEVEL_C,
