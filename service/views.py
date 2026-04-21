@@ -1928,40 +1928,72 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
     
     def post(self, request, problem_id):
         """上传附件"""
+        import logging
+        logger = logging.getLogger(__name__)
+        
+        logger.info(f"收到附件上传请求，问题ID: {problem_id}")
+        
         problem = get_object_or_404(Problem, id=problem_id)
         
         if 'file' not in request.FILES:
+            logger.error("请求中没有文件")
             return JsonResponse({'success': False, 'message': '请选择文件'})
         
         file = request.FILES['file']
+        logger.info(f"收到文件: {file.name}, 大小: {file.size}")
         
         # 创建上传目录
         upload_dir = os.path.join('problem_attachments', str(problem_id))
         full_upload_dir = os.path.join(settings.MEDIA_ROOT, upload_dir)
-        os.makedirs(full_upload_dir, exist_ok=True)
+        logger.info(f"上传目录: {full_upload_dir}")
+        
+        try:
+            os.makedirs(full_upload_dir, exist_ok=True)
+            logger.info("目录创建成功")
+        except Exception as e:
+            logger.error(f"创建目录失败: {str(e)}")
+            return JsonResponse({'success': False, 'message': f'创建目录失败: {str(e)}'})
         
         # 生成唯一文件名
         file_name = f"{timezone.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
         file_path = os.path.join(upload_dir, file_name)
+        full_file_path = os.path.join(full_upload_dir, file_name)
+        logger.info(f"保存路径: {full_file_path}")
         
         # 保存文件
-        full_file_path = os.path.join(full_upload_dir, file_name)
-        with open(full_file_path, 'wb+') as destination:
-            for chunk in file.chunks():
-                destination.write(chunk)
+        try:
+            with open(full_file_path, 'wb+') as destination:
+                for chunk in file.chunks():
+                    destination.write(chunk)
+            logger.info("文件保存成功")
+        except Exception as e:
+            logger.error(f"保存文件失败: {str(e)}")
+            return JsonResponse({'success': False, 'message': f'保存文件失败: {str(e)}'})
         
         # 创建附件记录
-        attachment = ProblemAttachment.objects.create(
-            problem=problem,
-            name=file.name,
-            file_type=file.name.split('.')[-1].lower() if '.' in file.name else '未知',
-            file_path=file_path,
-            uploader=request.user
-        )
+        try:
+            attachment = ProblemAttachment.objects.create(
+                problem=problem,
+                name=file.name,
+                file_type=file.name.split('.')[-1].lower() if '.' in file.name else '未知',
+                file_path=file_path,
+                uploader=request.user
+            )
+            logger.info(f"创建附件记录成功，ID: {attachment.id}")
+        except Exception as e:
+            logger.error(f"创建附件记录失败: {str(e)}")
+            # 清理已上传的文件
+            if os.path.exists(full_file_path):
+                try:
+                    os.remove(full_file_path)
+                except Exception:
+                    pass
+            return JsonResponse({'success': False, 'message': f'创建附件记录失败: {str(e)}'})
         
         # 检查是否是图片
         is_image = attachment.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp']
         
+        logger.info("附件上传成功")
         return JsonResponse({
             'success': True,
             'message': '附件上传成功',
