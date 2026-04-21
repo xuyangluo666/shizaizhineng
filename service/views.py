@@ -669,13 +669,13 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     response['Content-Disposition'] = f'attachment; filename={filename}'
                     return response
             except FileNotFoundError:
-                return JsonResponse({'success': False, 'message': '模板文件不存在'})
+                return JsonResponse({'success': False, 'message': '模板文件不存在', 'errors': ['模板文件不存在']})
         
         return render(request, self.template_name, {'customer_id': customer_id})
     
     def post(self, request, customer_id):
         if 'file' not in request.FILES:
-            return JsonResponse({'success': False, 'message': '请选择文件'})
+            return JsonResponse({'success': False, 'message': '请选择文件', 'errors': ['请选择文件']})
         
         file = request.FILES['file']
         try:
@@ -710,7 +710,8 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                             df = pd.read_excel(file)
                         except Exception as e:
                             # 所有尝试都失败，返回错误
-                            return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
+                            error_msg = f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'
+                            return JsonResponse({'success': False, 'message': error_msg, 'errors': [error_msg]})
                 elif file_extension in ['csv']:
                     # 读取CSV文件，尝试不同的编码
                     encodings = ['utf-8-sig', 'gbk', 'gb18030', 'utf-16']
@@ -720,17 +721,20 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                         try:
                             file.seek(0)  # 重置文件指针
                             df = pd.read_csv(file, encoding=encoding)
-                            break  # 成功读取��跳出循环
+                            break  # 成功读取，跳出循环
                         except Exception as e:
                             continue  # 尝试下一个编码
                     
                     # 如果所有编码都失败，返回错误
                     if df is None:
-                        return JsonResponse({'success': False, 'message': '读取CSV文件失败，无法识别编码格式。请确保文件格式正确且未损坏。'})
+                        error_msg = '读取CSV文件失败，无法识别编码格式。请确保文件格式正确且未损坏。'
+                        return JsonResponse({'success': False, 'message': error_msg, 'errors': [error_msg]})
                 else:
-                    return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
+                    error_msg = '不支持的文件格式，请上传.xlsx、.xls或.csv文件'
+                    return JsonResponse({'success': False, 'message': error_msg, 'errors': [error_msg]})
             except Exception as e:
-                return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'})
+                error_msg = f'读取文件失败: {str(e)}。请确保文件格式正确且未损坏。'
+                return JsonResponse({'success': False, 'message': error_msg, 'errors': [error_msg]})
             # 处理数据
             success_count = 0
             error_count = 0
@@ -865,7 +869,7 @@ class ProblemImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             })
             
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'导入失败: {str(e)}'})
+            return JsonResponse({'success': False, 'message': f'导入失败: {str(e)}', 'errors': [str(e)]})
 
 class ProblemExportView(LoginRequiredMixin, PermissionRequiredMixin, View):
     permission_required = 'service.view_problem'
