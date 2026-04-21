@@ -1956,7 +1956,8 @@ class ProblemAttachmentView(LoginRequiredMixin, View):
         
         # 生成唯一文件名
         file_name = f"{timezone.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
-        file_path = os.path.join(upload_dir, file_name)
+        # 使用正斜杠作为路径分隔符，确保前端URL正确
+        file_path = upload_dir + '/' + file_name
         full_file_path = os.path.join(full_upload_dir, file_name)
         logger.info(f"保存路径: {full_file_path}")
         

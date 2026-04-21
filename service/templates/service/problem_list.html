@@ -764,6 +764,9 @@ $(function() {
         var imagePath = $(this).data('path');
         var imageName = $(this).data('name');
         
+        // 确保路径使用正斜杠
+        imagePath = imagePath.replace(/\\/g, '/');
+        
         $('#imagePreviewModalLabel').text(imageName);
         $('#previewImage').attr('src', '/media/' + imagePath);
         $('#imagePreviewModal').modal('show');
