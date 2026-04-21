@@ -29,7 +29,7 @@
         <button type="submit" class="btn btn-primary mr-2">筛选</button>
         <div class="ml-auto">
             <button type="button" class="btn btn-success mr-2" data-toggle="modal" data-target="#createProblemModal">新增</button>
-            <a href="{% url 'service:problem_import' customer.id %}" class="btn btn-info mr-2">导入</a>
+            <!-- <a href="{% url 'service:problem_import' customer.id %}" class="btn btn-info mr-2">导入</a> -->
             <a href="{% url 'service:problem_export' %}?customer_id={{ customer.id }}" class="btn btn-info mr-2">导出</a>
             <button type="button" class="btn btn-danger mr-2" id="batchDeleteBtn">批量删除</button>
             <a href="{% url 'service:customer_detail' customer.id %}" class="btn btn-secondary">返回客户详情</a>
@@ -700,7 +700,7 @@ $(function() {
                         var attachmentInfo = $('<div></div>');
                         if (attachment.is_image) {
                             attachmentInfo.html(`
-                                <a href="javascript:void(0)" class="attachment-preview" data-path="${attachment.file_path}" data-name="${attachment.name}">
+                                <a href="javascript:void(0)" class="attachment-preview" data-path="${attachment.file_url}" data-name="${attachment.name}" style="color: #007bff; text-decoration: none;">
                                     <i class="fas fa-image mr-2"></i>${attachment.name}
                                 </a>
                             `);
@@ -713,7 +713,9 @@ $(function() {
                         }
                         
                         var attachmentActions = $('<div></div>');
-                        var deleteButton = $('<button class="btn btn-sm btn-danger ml-2" data-id="' + attachment.id + '"><i class="fas fa-trash"></i></button>');
+                        var downloadButton = $('<a href="${attachment.file_url}" class="btn btn-sm btn-info ml-2" download="${attachment.name}" title="下载"><i class="fas fa-download"></i></a>'.replace('${attachment.file_url}', attachment.file_url).replace('${attachment.name}', attachment.name));
+                        var deleteButton = $('<button class="btn btn-sm btn-danger ml-2" data-id="' + attachment.id + '" title="删除"><i class="fas fa-trash"></i></button>');
+                        attachmentActions.append(downloadButton);
                         attachmentActions.append(deleteButton);
                         
                         listItem.append(attachmentInfo);
@@ -767,9 +769,34 @@ $(function() {
         // 确保路径使用正斜杠
         imagePath = imagePath.replace(/\\/g, '/');
         
+        // 如果路径不以/media/开头，则添加
+        if (!imagePath.startsWith('/media/') && !imagePath.startsWith('http')) {
+            imagePath = '/media/' + imagePath;
+        }
+
         $('#imagePreviewModalLabel').text(imageName);
-        $('#previewImage').attr('src', '/media/' + imagePath);
-        $('#imagePreviewModal').modal('show');
+        var previewImage = $('#previewImage');
+        previewImage.attr('src', '');
+
+        // 添加加载状态
+        previewImage.addClass('loading');
+        previewImage.after('<div class="text-center"><div class="spinner-border" role="status"><span class="sr-only">Loading...</span></div></div>');
+
+        // 加载图片
+        var img = new Image();
+        img.onload = function() {
+            previewImage.attr('src', imagePath);
+            previewImage.removeClass('loading');
+            previewImage.next('.spinner-border').parent().remove();
+            $('#imagePreviewModal').modal('show');
+        };
+        img.onerror = function() {
+            previewImage.removeClass('loading');
+            previewImage.next('.spinner-border').parent().remove();
+            alert('图片加载失败，文件可能已被删除或路径无效: ' + imagePath);
+            console.error('图片加载失败:', imagePath);
+        };
+        img.src = imagePath;
     });
 
     // 上传按钮点击事件
