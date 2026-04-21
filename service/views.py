@@ -1549,13 +1549,13 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     response['Content-Disposition'] = f'attachment; filename={filename}'
                     return response
             except FileNotFoundError:
-                return JsonResponse({'success': False, 'message': '模板文件不存在'})
+                return JsonResponse({'success': False, 'message': '模板文件不存在', 'errors': ['模板文件不存在']})
         
         return render(request, self.template_name)
     
     def post(self, request):
         if 'file' not in request.FILES:
-            return JsonResponse({'success': False, 'message': '请选择文件'})
+            return JsonResponse({'success': False, 'message': '请选择文件', 'errors': ['请选择文件']})
         
         file = request.FILES['file']
         try:
@@ -1575,7 +1575,7 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     # 读取CSV文件，使用更简单的方法
                     df = pd.read_csv(file)
                 else:
-                    return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件'})
+                    return JsonResponse({'success': False, 'message': '不支持的文件格式，请上传.xlsx、.xls或.csv文件', 'errors': ['不支持的文件格式，请上传.xlsx、.xls或.csv文件']})
             except Exception as e:
                 # 如果直接读取失败，尝试使用更通用的方法
                 try:
@@ -1611,14 +1611,16 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                                 data = rows[1:]
                                 df = pd.DataFrame(data, columns=headers)
                             else:
-                                return JsonResponse({'success': False, 'message': '文件内容为空，请确保文件格式正确且未损坏。'})
+                                return JsonResponse({'success': False, 'message': '文件内容为空，请确保文件格式正确且未损坏。', 'errors': ['文件内容为空，请确保文件格式正确且未损坏。']})
                         else:
-                            return JsonResponse({'success': False, 'message': '无法识别文件编码格式，请确保文件格式正确且未损坏。'})
+                            return JsonResponse({'success': False, 'message': '无法识别文件编码格式，请确保文件格式正确且未损坏。', 'errors': ['无法识别文件编码格式，请确保文件格式正确且未损坏。']})
                     else:
                         # 对于Excel文件，返回更详细的错误信息
-                        return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e)}。请确保文件是有效的Excel文件且未损坏。'})
+                        error_msg = f'读取文件失败: {str(e)}。请确保文件是有效的Excel文件且未损坏。'
+                        return JsonResponse({'success': False, 'message': error_msg, 'errors': [error_msg]})
                 except Exception as e2:
-                    return JsonResponse({'success': False, 'message': f'读取文件失败: {str(e2)}。请确保文件格式正确且未损坏。'})
+                    error_msg = f'读取文件失败: {str(e2)}。请确保文件格式正确且未损坏。'
+                    return JsonResponse({'success': False, 'message': error_msg, 'errors': [error_msg]})
             
             # 处理数据
             success_count = 0
@@ -1633,7 +1635,7 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                     customer_type = row.get('客户类型', '').strip() if pd.notna(row.get('客户类型')) else ''
                     status = row.get('当前状态', '').strip() if pd.notna(row.get('当前状态')) else ''
                     contact_person = row.get('负责人', '').strip() if pd.notna(row.get('负责人')) else ''
-                    opportunity_number = row.get('商机编号', '').strip() if pd.notna(row.get('商机编号')) else ''
+                    sales_person = row.get('销售负责人', '').strip() if pd.notna(row.get('销售负责人')) else ''
                     customer_level = row.get('客户级别', '').strip() if pd.notna(row.get('客户级别')) else ''
                     
                     # 验证必填字段
@@ -1687,7 +1689,7 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
                         customer_type=customer_type,
                         status=status,
                         contact_person=contact_person,
-                        opportunity_number=opportunity_number,
+                        sales_person=sales_person,
                         customer_level=customer_level
                     )
                     customer.save()
@@ -1719,12 +1721,14 @@ class CustomerImportView(LoginRequiredMixin, PermissionRequiredMixin, View):
             return JsonResponse({
                 'success': True,
                 'message': f'导入完成，成功 {success_count} 条, 失败 {error_count} 条',
+                'success_count': success_count,
+                'error_count': error_count,
                 'errors': errors,
                 'redirect_url': reverse('service:customer_list')
             })
             
         except Exception as e:
-            return JsonResponse({'success': False, 'message': f'导入失败: {str(e)}'})
+            return JsonResponse({'success': False, 'message': f'导入失败: {str(e)}', 'errors': [str(e)]})
 
 # 认证相关视图
 class RegisterView(FormView):

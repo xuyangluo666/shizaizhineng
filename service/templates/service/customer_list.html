@@ -624,9 +624,19 @@ $(function() {
                 
                 // 显示导入结果
                 if (response.success) {
-                    alert('导入成功！\n成功: ' + response.success_count + ' 条\n失败: ' + response.error_count + ' 条');
+                    if (response.errors && response.errors.length > 0) {
+                        var errorMessage = '导入成功！\n成功: ' + response.success_count + ' 条\n失败: ' + response.error_count + ' 条\n\n错误详情：\n' + response.errors.join('\n');
+                        alert(errorMessage);
+                    } else {
+                        alert('导入成功！\n成功: ' + response.success_count + ' 条\n失败: ' + response.error_count + ' 条');
+                    }
                 } else {
-                    alert('导入失败: ' + response.message);
+                    if (response.errors && response.errors.length > 0) {
+                        var errorMessage = '导入失败: ' + response.message + '\n\n错误详情：\n' + response.errors.join('\n');
+                        alert(errorMessage);
+                    } else {
+                        alert('导入失败: ' + response.message);
+                    }
                 }
                 
                 // 刷新页面

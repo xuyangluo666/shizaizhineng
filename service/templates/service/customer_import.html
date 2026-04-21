@@ -68,7 +68,12 @@ $(function() {
                         window.location.href = response.redirect_url;
                     }
                 } else {
-                    alert(response.message);
+                    if (response.errors && response.errors.length > 0) {
+                        var errorMessage = response.message + '\n\n错误详情：\n' + response.errors.join('\n');
+                        alert(errorMessage);
+                    } else {
+                        alert(response.message);
+                    }
                 }
             },
             error: function(xhr) {
