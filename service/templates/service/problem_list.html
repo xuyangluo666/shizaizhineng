@@ -357,6 +357,7 @@
                     <label for="attachmentFile">上传附件</label>
                     <input type="file" class="form-control-file" id="attachmentFile" multiple>
                     <small class="form-text text-muted">支持拖拽或复制粘贴文件上传</small>
+                    <button type="button" class="btn btn-primary mt-2" id="uploadAttachmentsBtn">上传文件</button>
                 </div>
                 <div class="attachments-list mt-4">
                     <h6>已上传附件</h6>
@@ -768,11 +769,15 @@ $(function() {
         $('#imagePreviewModal').modal('show');
     });
 
-    // 文件上传处理
-    $('#attachmentFile').change(function(e) {
-        var files = e.target.files;
+    // 上传按钮点击事件
+    $('#uploadAttachmentsBtn').click(function() {
+        var files = $('#attachmentFile')[0].files;
         if (files.length > 0) {
             uploadFiles(files);
+            // 清空文件输入
+            $('#attachmentFile').val('');
+        } else {
+            alert('请选择要上传的文件');
         }
     });
 
