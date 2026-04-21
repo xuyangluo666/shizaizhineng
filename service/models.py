@@ -454,6 +454,22 @@ class Problem(models.Model):
     def __str__(self):
         return self.title
 
+class ProblemAttachment(models.Model):
+    """问题记录附件模型"""
+    problem = models.ForeignKey(Problem, on_delete=models.CASCADE, related_name='attachments', verbose_name='问题记录')
+    name = models.CharField(max_length=255, verbose_name='文件名称')
+    file_type = models.CharField(max_length=50, verbose_name='文件类型')
+    file_path = models.CharField(max_length=500, verbose_name='文件路径')
+    uploader = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, verbose_name='上传人')
+    upload_time = models.DateTimeField(auto_now_add=True, verbose_name='上传时间')
+    
+    class Meta:
+        verbose_name = '问题记录附件'
+        verbose_name_plural = '问题记录附件'
+    
+    def __str__(self):
+        return self.name
+
 class TrialCustomer(models.Model):
     """试用客户扩展信息"""
     customer = models.OneToOneField(Customer, on_delete=models.CASCADE, verbose_name='客户')

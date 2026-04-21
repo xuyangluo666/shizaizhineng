@@ -83,6 +83,37 @@
                     <td>{{ problem.close_time|date:"Y-m-d H:i"|default:"无" }}</td>
                     <td>{{ problem.created_at|date:"Y-m-d H:i:s"|default:"无" }}</td>
                     <td>
+                        <div class="position-relative">
+                            {% if problem.attachments.count > 0 %}
+                            <button class="btn btn-sm btn-info attachment-btn" data-id="{{ problem.id }}" title="查看附件">
+                                <i class="fas fa-paperclip"></i>
+                                <span class="badge badge-light">{{ problem.attachments.count }}</span>
+                            </button>
+                            <div class="attachment-tooltip" style="visibility: hidden; width: 200px; background-color: #333; color: #fff; text-align: left; border-radius: 6px; padding: 8px; position: absolute; z-index: 1000; bottom: 125%; left: 0; opacity: 0; transition: opacity 0.1s, visibility 0.1s; font-size: 14px; line-height: 1.4;">
+                                <div class="mb-2">附件列表：</div>
+                                {% for attachment in problem.attachments.all %}
+                                <div class="attachment-item mb-1">
+                                    {% if attachment.file_type in 'jpg,jpeg,png,gif,webp' %}
+                                    <a href="javascript:void(0)" class="attachment-preview" data-id="{{ attachment.id }}" data-path="{{ attachment.file_path }}" data-name="{{ attachment.name }}" style="color: #fff; text-decoration: none;">
+                                        <i class="fas fa-image mr-1"></i>{{ attachment.name }}
+                                    </a>
+                                    {% else %}
+                                    <span style="color: #fff;">
+                                        <i class="fas fa-file mr-1"></i>{{ attachment.name }}
+                                    </span>
+                                    {% endif %}
+                                </div>
+                                {% endfor %}
+                                <span class="tooltip-arrow" style="position: absolute; top: 100%; left: 10px; margin-left: -5px; border-width: 5px; border-style: solid; border-color: #333 transparent transparent transparent;"></span>
+                            </div>
+                            {% else %}
+                            <button class="btn btn-sm btn-outline-info attachment-btn" data-id="{{ problem.id }}" title="添加附件">
+                                <i class="fas fa-paperclip"></i>
+                            </button>
+                            {% endif %}
+                        </div>
+                    </td>
+                    <td>
                         <button class="btn btn-sm btn-warning edit-problem-btn" data-id="{{ problem.id }}" data-opportunity="{{ problem.opportunity.id }}" data-title="{{ problem.title }}" data-description="{{ problem.description }}" data-problem-type="{{ problem.problem_type }}" data-service-mode="{{ problem.service_mode }}" data-handler="{{ problem.handler.id|default:'' }}" data-related-process="{{ problem.related_process.id|default:'' }}" data-is-closed="{{ problem.is_closed }}" data-close-time="{{ problem.close_time|date:'Y-m-d\\TH:i'|default:'' }}">编辑</button>
                         <button class="btn btn-sm btn-danger delete-problem-btn" data-id="{{ problem.id }}" data-title="{{ problem.title }}">删除</button>
                     </td>
@@ -307,6 +338,57 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-dismiss="modal">取消</button>
                 <button type="button" class="btn btn-danger" id="confirmDelete">确认删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 附件管理模态窗 -->
+<div class="modal fade" id="attachmentModal" tabindex="-1" role="dialog" aria-labelledby="attachmentModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="attachmentModalLabel">附件管理</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="currentProblemId">
+                <div class="form-group">
+                    <label for="attachmentFile">上传附件</label>
+                    <input type="file" class="form-control-file" id="attachmentFile" multiple>
+                    <small class="form-text text-muted">支持拖拽或复制粘贴文件上传</small>
+                </div>
+                <div class="attachments-list mt-4">
+                    <h6>已上传附件</h6>
+                    <div id="attachmentsContainer" class="mt-2"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 图片预览模态窗 -->
+<div class="modal fade" id="imagePreviewModal" tabindex="-1" role="dialog" aria-labelledby="imagePreviewModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="imagePreviewModalLabel">图片预览</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="text-center">
+                    <img id="previewImage" src="" alt="预览图片" class="img-fluid">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">关闭</button>
             </div>
         </div>
     </div>
@@ -573,6 +655,196 @@ $(function() {
             closeTimeField.prop('disabled', true);
         }
     });
+
+    // 附件按钮悬停显示工具提示
+    $(document).on('mouseenter', '.attachment-btn', function() {
+        $(this).next('.attachment-tooltip').css({'visibility': 'visible', 'opacity': '1'});
+    });
+
+    $(document).on('mouseleave', '.attachment-btn', function() {
+        $(this).next('.attachment-tooltip').css({'visibility': 'hidden', 'opacity': '0'});
+    });
+
+    // 附件按钮点击事件
+    $(document).on('click', '.attachment-btn', function() {
+        var problemId = $(this).data('id');
+        $('#currentProblemId').val(problemId);
+        
+        // 加载附件列表
+        loadAttachments(problemId);
+        
+        // 显示附件管理模态窗
+        $('#attachmentModal').modal('show');
+    });
+
+    // 加载附件列表
+    function loadAttachments(problemId) {
+        $.ajax({
+            url: `/service/problems/${problemId}/attachments/`,
+            type: 'GET',
+            success: function(response) {
+                if (response.success) {
+                    var attachmentsContainer = $('#attachmentsContainer');
+                    attachmentsContainer.empty();
+                    
+                    if (response.attachments.length === 0) {
+                        attachmentsContainer.html('<p class="text-muted">暂无附件</p>');
+                        return;
+                    }
+                    
+                    var attachmentsList = $('<ul class="list-group"></ul>');
+                    response.attachments.forEach(function(attachment) {
+                        var listItem = $('<li class="list-group-item d-flex justify-content-between align-items-center"></li>');
+                        
+                        var attachmentInfo = $('<div></div>');
+                        if (attachment.is_image) {
+                            attachmentInfo.html(`
+                                <a href="javascript:void(0)" class="attachment-preview" data-path="${attachment.file_path}" data-name="${attachment.name}">
+                                    <i class="fas fa-image mr-2"></i>${attachment.name}
+                                </a>
+                            `);
+                        } else {
+                            attachmentInfo.html(`
+                                <span>
+                                    <i class="fas fa-file mr-2"></i>${attachment.name}
+                                </span>
+                            `);
+                        }
+                        
+                        var attachmentActions = $('<div></div>');
+                        var deleteButton = $('<button class="btn btn-sm btn-danger ml-2" data-id="' + attachment.id + '"><i class="fas fa-trash"></i></button>');
+                        attachmentActions.append(deleteButton);
+                        
+                        listItem.append(attachmentInfo);
+                        listItem.append(attachmentActions);
+                        attachmentsList.append(listItem);
+                    });
+                    
+                    attachmentsContainer.append(attachmentsList);
+                }
+            },
+            error: function(xhr) {
+                console.log('Error loading attachments:', xhr.responseText);
+            }
+        });
+    }
+
+    // 附件删除按钮点击事件
+    $(document).on('click', '.list-group-item .btn-danger', function() {
+        var attachmentId = $(this).data('id');
+        var problemId = $('#currentProblemId').val();
+        var listItem = $(this).closest('.list-group-item');
+        
+        if (confirm('确定要删除这个附件吗？')) {
+            $.ajax({
+                url: `/service/problems/${problemId}/attachments/${attachmentId}/`,
+                type: 'DELETE',
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        listItem.remove();
+                        // 检查是否还有附件
+                        if ($('#attachmentsContainer .list-group-item').length === 0) {
+                            $('#attachmentsContainer').html('<p class="text-muted">暂无附件</p>');
+                        }
+                    }
+                },
+                error: function(xhr) {
+                    console.log('Error deleting attachment:', xhr.responseText);
+                }
+            });
+        }
+    });
+
+    // 图片预览点击事件
+    $(document).on('click', '.attachment-preview', function() {
+        var imagePath = $(this).data('path');
+        var imageName = $(this).data('name');
+        
+        $('#imagePreviewModalLabel').text(imageName);
+        $('#previewImage').attr('src', '/media/' + imagePath);
+        $('#imagePreviewModal').modal('show');
+    });
+
+    // 文件上传处理
+    $('#attachmentFile').change(function(e) {
+        var files = e.target.files;
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+
+    // 支持拖拽上传
+    var attachmentFileInput = document.getElementById('attachmentFile');
+    var modalBody = document.querySelector('#attachmentModal .modal-body');
+    
+    modalBody.addEventListener('dragover', function(e) {
+        e.preventDefault();
+        modalBody.classList.add('bg-light');
+    });
+
+    modalBody.addEventListener('dragleave', function() {
+        modalBody.classList.remove('bg-light');
+    });
+
+    modalBody.addEventListener('drop', function(e) {
+        e.preventDefault();
+        modalBody.classList.remove('bg-light');
+        
+        var files = e.dataTransfer.files;
+        if (files.length > 0) {
+            uploadFiles(files);
+        }
+    });
+
+    // 支持复制粘贴上传
+    document.addEventListener('paste', function(e) {
+        var items = e.clipboardData.items;
+        var files = [];
+        
+        for (var i = 0; i < items.length; i++) {
+            if (items[i].kind === 'file') {
+                files.push(items[i].getAsFile());
+            }
+        }
+        
+        if (files.length > 0 && $('#attachmentModal').hasClass('show')) {
+            uploadFiles(files);
+        }
+    });
+
+    // 上传文件
+    function uploadFiles(files) {
+        var problemId = $('#currentProblemId').val();
+        
+        for (var i = 0; i < files.length; i++) {
+            var file = files[i];
+            var formData = new FormData();
+            formData.append('file', file);
+            
+            $.ajax({
+                url: `/service/problems/${problemId}/attachments/`,
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                headers: {
+                    'X-CSRFToken': $('input[name="csrfmiddlewaretoken"]').val()
+                },
+                success: function(response) {
+                    if (response.success) {
+                        // 重新加载附件列表
+                        loadAttachments(problemId);
+                    }
+                },
+                error: function(xhr) {
+                    console.log('Error uploading file:', xhr.responseText);
+                }
+            });
+        }
+    }
 });
 </script>
 {% endblock %}

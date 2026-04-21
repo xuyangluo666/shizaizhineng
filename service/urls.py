@@ -24,6 +24,9 @@ urlpatterns = [
     path('problems/batch-delete/', views.ProblemBatchDeleteView.as_view(), name='problem_batch_delete'),
     path('problems/import/<int:customer_id>/', views.ProblemImportView.as_view(), name='problem_import'),
     path('problems/export/', views.ProblemExportView.as_view(), name='problem_export'),
+    # 问题记录附件管理
+    path('problems/<int:problem_id>/attachments/', views.ProblemAttachmentView.as_view(), name='problem_attachments'),
+    path('problems/<int:problem_id>/attachments/<int:attachment_id>/', views.ProblemAttachmentView.as_view(), name='problem_attachment_detail'),
     
     # 项目管理
     path('projects/create/<int:customer_id>/', views.ProjectCreateView.as_view(), name='project_create'),

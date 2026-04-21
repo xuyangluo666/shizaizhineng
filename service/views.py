@@ -1922,6 +1922,99 @@ class PasswordResetConfirmView(FormView):
             messages.error(request, '重置链接无效或已过期')
             return redirect('service:login')
 
+# 问题记录附件管理视图
+class ProblemAttachmentView(LoginRequiredMixin, View):
+    """问题记录附件管理视图"""
+    
+    def post(self, request, problem_id):
+        """上传附件"""
+        problem = get_object_or_404(Problem, id=problem_id)
+        
+        if 'file' not in request.FILES:
+            return JsonResponse({'success': False, 'message': '请选择文件'})
+        
+        file = request.FILES['file']
+        
+        # 创建上传目录
+        upload_dir = os.path.join('problem_attachments', str(problem_id))
+        full_upload_dir = os.path.join(settings.MEDIA_ROOT, upload_dir)
+        os.makedirs(full_upload_dir, exist_ok=True)
+        
+        # 生成唯一文件名
+        file_name = f"{timezone.now().strftime('%Y%m%d%H%M%S')}_{file.name}"
+        file_path = os.path.join(upload_dir, file_name)
+        
+        # 保存文件
+        full_file_path = os.path.join(full_upload_dir, file_name)
+        with open(full_file_path, 'wb+') as destination:
+            for chunk in file.chunks():
+                destination.write(chunk)
+        
+        # 创建附件记录
+        attachment = ProblemAttachment.objects.create(
+            problem=problem,
+            name=file.name,
+            file_type=file.name.split('.')[-1].lower() if '.' in file.name else '未知',
+            file_path=file_path,
+            uploader=request.user
+        )
+        
+        # 检查是否是图片
+        is_image = attachment.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp']
+        
+        return JsonResponse({
+            'success': True,
+            'message': '附件上传成功',
+            'attachment': {
+                'id': attachment.id,
+                'name': attachment.name,
+                'file_type': attachment.file_type,
+                'file_path': attachment.file_path,
+                'upload_time': attachment.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_image': is_image
+            }
+        })
+    
+    def delete(self, request, problem_id, attachment_id):
+        """删除附件"""
+        problem = get_object_or_404(Problem, id=problem_id)
+        attachment = get_object_or_404(ProblemAttachment, id=attachment_id, problem=problem)
+        
+        # 删除文件
+        full_file_path = os.path.join(settings.MEDIA_ROOT, attachment.file_path)
+        if os.path.exists(full_file_path):
+            try:
+                os.remove(full_file_path)
+            except Exception:
+                pass
+        
+        # 删除数据库记录
+        attachment.delete()
+        
+        return JsonResponse({'success': True, 'message': '附件删除成功'})
+    
+    def get(self, request, problem_id):
+        """获取问题记录的附件列表"""
+        problem = get_object_or_404(Problem, id=problem_id)
+        attachments = problem.attachments.all()
+        
+        attachment_list = []
+        for attachment in attachments:
+            is_image = attachment.file_type in ['jpg', 'jpeg', 'png', 'gif', 'webp']
+            attachment_list.append({
+                'id': attachment.id,
+                'name': attachment.name,
+                'file_type': attachment.file_type,
+                'file_path': attachment.file_path,
+                'upload_time': attachment.upload_time.strftime('%Y-%m-%d %H:%M:%S'),
+                'is_image': is_image
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'attachments': attachment_list
+        })
+
 # 根路径重定向视图
 def root_redirect(request):
     """根路径重定向，未登录跳转到登录页，已登录跳转到客户列表页"""
